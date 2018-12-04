@@ -195,6 +195,16 @@ std::unique_lock<std::mutex> Table::acquire_append_mutex() { return std::unique_
 
 std::vector<IndexInfo> Table::get_indexes() const { return _indexes; }
 
+std::vector<ColumnID> Table::get_unique_columns() const {
+  auto unique_columns = std::vector<ColumnID>();
+  for (ColumnID column_id = ColumnID{0}; column_id < _column_definitions.size(); column_id++) {
+    if(_column_definitions[column_id].unique_constraint) {
+      unique_columns.emplace_back(column_id);
+    }
+  }
+  return unique_columns;
+}
+
 size_t Table::estimate_memory_usage() const {
   auto bytes = size_t{sizeof(*this)};
 

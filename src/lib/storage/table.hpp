@@ -162,6 +162,8 @@ class Table : private Noncopyable {
     _indexes.emplace_back(i);
   }
 
+  std::vector<ColumnID> get_unique_columns() const;
+
   /**
    * For debugging purposes, makes an estimation about the memory used by this Table (including Chunk and Segments)
    */

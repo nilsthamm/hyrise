@@ -8,13 +8,14 @@ namespace opossum {
 
 struct TableColumnDefinition final {
   TableColumnDefinition() = default;
-  TableColumnDefinition(const std::string& name, const DataType data_type, const bool nullable = false);
+  TableColumnDefinition(const std::string& name, const DataType data_type, const bool nullable = false, const bool unique_constraint = false);
 
   bool operator==(const TableColumnDefinition& rhs) const;
 
   std::string name;
   DataType data_type{DataType::Int};
   bool nullable{false};
+  bool unique_constraint{false};
 };
 
 // So that google test, e.g., prints readable error messages

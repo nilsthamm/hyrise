@@ -396,6 +396,7 @@ set(
     storage/chunk_encoder.cpp
     storage/chunk_encoder.hpp
     storage/create_iterable_from_segment.hpp
+    storage/constraints/unique_enforcer.hpp
     storage/dictionary_segment.cpp
     storage/dictionary_segment.hpp
     storage/dictionary_segment/attribute_vector_iterable.hpp
