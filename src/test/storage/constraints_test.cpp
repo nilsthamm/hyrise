@@ -14,8 +14,8 @@ class ConstraintsTest: public BaseTest {
     column_definitions.emplace_back("unique_column", DataType::Int, false, true);
     column_definitions.emplace_back("other_column", DataType::Int, false, false);
 
-    auto valid_table = std::make_shared<Table>(column_definitions, TableType::Data, 2);
-    auto invalid_table = std::make_shared<Table>(column_definitions, TableType::Data, 2);
+    auto valid_table = std::make_shared<Table>(column_definitions, TableType::Data, 2, UseMvcc::Yes);
+    auto invalid_table = std::make_shared<Table>(column_definitions, TableType::Data, 2, UseMvcc::Yes);
 
     valid_table->append({1, 1});
     valid_table->append({2, 1});
@@ -25,7 +25,7 @@ class ConstraintsTest: public BaseTest {
     invalid_table->append({1, 1});
     invalid_table->append({2, 1});
     invalid_table->append({5, 2});
-    invalid_table->append({0, -1});
+    invalid_table->append({1, -1});
 
     auto& manager = StorageManager::get();
     manager.add_table("validTable", valid_table);
