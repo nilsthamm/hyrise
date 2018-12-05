@@ -3,6 +3,8 @@
 #include "base_test.hpp"
 #include "gtest/gtest.h"
 
+#include "operators/get_table.hpp"
+#include "operators/insert.hpp"
 #include "storage/constraints/unique_enforcer.hpp"
 #include "storage/storage_manager.hpp"
 #include "storage/table.hpp"
@@ -37,12 +39,84 @@ class ConstraintsTest: public BaseTest {
 
 TEST_F(ConstraintsTest, TableUniqueValid) {
   const auto table = StorageManager::get().get_table("validTable");
-  EXPECT_EQ(does_table_conforms_constraints(table), true);
+  EXPECT_TRUE(does_table_conforms_constraints(table));
 }
 
 TEST_F(ConstraintsTest, TableUniqueInvalid) {
   const auto table = StorageManager::get().get_table("invalidTable");
-  EXPECT_EQ(does_table_conforms_constraints(table), false);
+  EXPECT_FALSE(does_table_conforms_constraints(table));
+}
+
+TEST_F(ConstraintsTest, InavlidInsert) {
+  // Use private table to not interfere with other test cases
+  TableColumnDefinitions valid_table_column_definitions;
+  valid_table_column_definitions.emplace_back("unique_column", DataType::Int, false, true);
+  valid_table_column_definitions.emplace_back("other_column", DataType::Int, false, false);
+
+  auto valid_table = std::make_shared<Table>(valid_table_column_definitions, TableType::Data, 2, UseMvcc::Yes);
+
+  valid_table->append({1, 1});
+  valid_table->append({2, 1});
+  valid_table->append({5, 2});
+  valid_table->append({0, -1});
+
+  auto& manager = StorageManager::get();
+  manager.add_table("InavlidInsert", valid_table);
+
+  // Test if first column is valid before the insert
+  EXPECT_TRUE(does_table_conforms_constraints(valid_table));
+
+  // Add the same values again
+  auto gt = std::make_shared<GetTable>("validTable");
+  gt->execute();
+
+
+  auto ins = std::make_shared<Insert>("InavlidInsert", gt);
+  auto context = TransactionManager::get().new_transaction_context();
+  ins->set_transaction_context(context);
+
+  ins->execute();
+
+  context->commit();
+
+  // Test if enforcer reconizes duplicates
+  EXPECT_FALSE(does_table_conforms_constraints(valid_table));
+}
+
+TEST_F(ConstraintsTest, ValidInsert) {
+  // Use private table to not interfere with other test cases
+  TableColumnDefinitions valid_table_column_definitions;
+  valid_table_column_definitions.emplace_back("unique_column", DataType::Int, false, true);
+  valid_table_column_definitions.emplace_back("other_column", DataType::Int, false, false);
+
+  auto valid_table = std::make_shared<Table>(valid_table_column_definitions, TableType::Data, 2, UseMvcc::Yes);
+
+  valid_table->append({11, 1});
+  valid_table->append({21, 1});
+  valid_table->append({51, 2});
+  valid_table->append({10, -1});
+
+  auto& manager = StorageManager::get();
+  manager.add_table("ValidInsert", valid_table);
+
+  // Test if first column is valid before the insert
+  EXPECT_TRUE(does_table_conforms_constraints(valid_table));
+
+  // Add the same values again
+  auto gt = std::make_shared<GetTable>("validTable");
+  gt->execute();
+
+
+  auto ins = std::make_shared<Insert>("ValidInsert", gt);
+  auto context = TransactionManager::get().new_transaction_context();
+  ins->set_transaction_context(context);
+
+  ins->execute();
+
+  context->commit();
+
+  // Test if table is still valid
+  EXPECT_TRUE(does_table_conforms_constraints(valid_table));
 }
 
 }  // namespace opossum
