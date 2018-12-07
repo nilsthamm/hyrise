@@ -222,4 +222,23 @@ size_t Table::estimate_memory_usage() const {
   return bytes;
 }
 
+
+void Table::add_unique_constraint(const ColumnID& column_id) {
+  DebugAssert(_constraint_definitions->find(column_id) == _constraint_definitions->end() 
+    || _constraint_definitions->find(column_id)->second.unique_concatenated_columns.size() == 0, "Column already has a unique constraint");
+  _constraint_definitions->operator[](column_id) = TableConstraintDefinition({});
+}
+
+void Table::add_primary_key_constraint(const ColumnID& column_id) {
+  // TODO only throw an error if the column can't be converted
+  Assert(!_column_definitions[column_id].nullable, "Primary key column can not be null");
+  add_unique_constraint(column_id);
+}
+
+void Table::add_concatenated_unique_constraint(std::vector<ColumnID> column_ids) {
+  for(const auto& column_id : column_ids) {
+    _constraint_definitions->operator[](column_id) = TableConstraintDefinition{{column_ids}};
+  }
+}
+
 }  // namespace opossum

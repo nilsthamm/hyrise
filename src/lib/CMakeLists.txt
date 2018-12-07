@@ -395,8 +395,10 @@ set(
     storage/chunk_access_counter.hpp
     storage/chunk_encoder.cpp
     storage/chunk_encoder.hpp
-    storage/create_iterable_from_segment.hpp
     storage/constraints/unique_enforcer.hpp
+    storage/constraints/table_constraint_definition.cpp
+    storage/constraints/table_constraint_definition.hpp
+    storage/create_iterable_from_segment.hpp
     storage/dictionary_segment.cpp
     storage/dictionary_segment.hpp
     storage/dictionary_segment/attribute_vector_iterable.hpp
