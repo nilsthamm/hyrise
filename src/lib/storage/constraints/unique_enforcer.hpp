@@ -2,9 +2,10 @@
 
 #include <memory>
 #include <functional>
-#include <unordered_map>
+#include <unordered_set>
 
 #include "storage/table.hpp"
+#include "storage/segment_accessor.hpp"
 #include "resolve_type.hpp"
 #include "types.hpp"
 
@@ -27,50 +28,25 @@ class UniqueConstraintEnforcer : public BaseConstraintEnforcer {
  public:
   UniqueConstraintEnforcer(const std::shared_ptr<const Table> table, const ColumnID& column_id) : BaseConstraintEnforcer(table, column_id) {}
   bool conforms_constraint() const override {
-    std::shared_ptr<std::unordered_map<size_t, std::vector<RowID>>> hash_to_column_id = std::make_shared<std::unordered_map<size_t, std::vector<RowID>>>();
+    std::unordered_set<T> unique_values;
 
-    std::hash<T> hasher;
     for(const auto& chunk : _table->chunks()) {
-      if(auto value_segment = std::dynamic_pointer_cast<ValueSegment<T>>(chunk->get_segment(_column_id))) {
-        const auto& values = value_segment->values();
-        for(ChunkOffset chunk_offset = ChunkOffset{0}; chunk_offset < values.size(); chunk_offset++) {
-          const auto hash = hasher(values[chunk_offset]);
-          auto iter = hash_to_column_id->find(hash);
-          if(iter == hash_to_column_id->end()) {
-            hash_to_column_id->insert({hash, {}});
-          } else {
-            return false;
-          }
+      const auto& segment = chunk->get_segment(_column_id);
+      auto segment_accessor = create_segment_accessor<T>(segment);
+
+      for (ChunkOffset chunk_offset = 0; chunk_offset < segment->size(); chunk_offset++) {
+        const std::optional<T>& value = segment_accessor->access(chunk_offset);
+        if (!value.has_value()) {
+          continue;
         }
-      } else if(auto dictionary_segment = std::dynamic_pointer_cast<DictionarySegment<T>>(chunk->get_segment(_column_id))) {
-        if(dictionary_segment->unique_values_count() != dictionary_segment->size()) {
+        if (unique_values.count(value.value())) {
           return false;
         }
-        const auto& values = dictionary_segment->dictionary();
-        for(ChunkOffset chunk_offset = ChunkOffset{0}; chunk_offset < values->size(); chunk_offset++) {
-          const auto hash = hasher(values->operator[](chunk_offset));
-          auto iter = hash_to_column_id->find(hash);
-          if(iter == hash_to_column_id->end()) {
-            hash_to_column_id->insert({hash, {}});
-          } else {
-            return false;
-          }
-        }
-      } else if(auto reference_segment = std::dynamic_pointer_cast<ReferenceSegment>(chunk->get_segment(_column_id))) {
-        // TOOD: Maybe iterate over referenced table directly and check if RowID is in pos_list, with appropriate structure (pos_list to set of RowIDs and Chunks)
-
-
-      } else {
-        Fail("Unkown column type");
+        unique_values.insert(value.value());
       }
     }
     return true;
   }
- 
- protected:
-  // void add_hash(const T& value, std::shared_ptr<const std::hash<T>> hasher, std::shared_ptr<std::unordered_map<size_t, std::vector<RowID>>> hash_map) {
-
-  // }
 };
 
 
