@@ -395,7 +395,7 @@ set(
     storage/chunk_access_counter.hpp
     storage/chunk_encoder.cpp
     storage/chunk_encoder.hpp
-    storage/constraints/unique_enforcer.hpp
+    storage/constraints/unique_checker.hpp
     storage/constraints/table_constraint_definition.cpp
     storage/constraints/table_constraint_definition.hpp
     storage/create_iterable_from_segment.hpp

@@ -11,12 +11,12 @@
 
 namespace opossum {
 
-class BaseConstraintEnforcer {
+class BaseConstraintChecker {
  public:
-  BaseConstraintEnforcer(const std::shared_ptr<const Table> table, const ColumnID& column_id) : _table(table), _column_id(column_id) {}
-  virtual ~BaseConstraintEnforcer() = default;
+  BaseConstraintChecker(const std::shared_ptr<const Table> table, const ColumnID& column_id) : _table(table), _column_id(column_id) {}
+  virtual ~BaseConstraintChecker() = default;
 
-  virtual bool conforms_constraint() const = 0;
+  virtual bool check() const = 0;
 
  protected:
   std::shared_ptr<const Table> _table;
@@ -24,10 +24,10 @@ class BaseConstraintEnforcer {
 };
 
 template<typename T>
-class UniqueConstraintEnforcer : public BaseConstraintEnforcer {
+class UniqueConstraintChecker : public BaseConstraintChecker {
  public:
-  UniqueConstraintEnforcer(const std::shared_ptr<const Table> table, const ColumnID& column_id) : BaseConstraintEnforcer(table, column_id) {}
-  bool conforms_constraint() const override {
+  UniqueConstraintChecker(const std::shared_ptr<const Table> table, const ColumnID& column_id) : BaseConstraintChecker(table, column_id) {}
+  bool check() const override {
     std::unordered_set<T> unique_values;
 
     for(const auto& chunk : _table->chunks()) {
@@ -49,13 +49,13 @@ class UniqueConstraintEnforcer : public BaseConstraintEnforcer {
   }
 };
 
-
-bool does_table_conforms_constraints(std::shared_ptr<const Table> table) {
-  auto conforms = true;
+bool check_constraints(std::shared_ptr<const Table> table) {
   for(const auto& column_id : table->get_unique_columns()) {
-    const auto contraint_enforcer = make_shared_by_data_type<BaseConstraintEnforcer, UniqueConstraintEnforcer>(table->column_data_type(column_id), table, column_id);
-    conforms &= contraint_enforcer->conforms_constraint();
+    const auto constraint_checker = make_shared_by_data_type<BaseConstraintChecker, UniqueConstraintChecker>(table->column_data_type(column_id), table, column_id);
+    if (!constraint_checker->check()) {
+      return false;
+    }
   }
-  return conforms;
+  return true;
 }
 }  // namespace opossum

@@ -5,7 +5,7 @@
 
 #include "operators/get_table.hpp"
 #include "operators/insert.hpp"
-#include "storage/constraints/unique_enforcer.hpp"
+#include "storage/constraints/unique_checker.hpp"
 #include "storage/storage_manager.hpp"
 #include "storage/table.hpp"
 
@@ -39,12 +39,12 @@ class ConstraintsTest: public BaseTest {
 
 TEST_F(ConstraintsTest, TableUniqueValid) {
   const auto table = StorageManager::get().get_table("validTable");
-  EXPECT_TRUE(does_table_conforms_constraints(table));
+  EXPECT_TRUE(check_constraints(table));
 }
 
 TEST_F(ConstraintsTest, TableUniqueInvalid) {
   const auto table = StorageManager::get().get_table("invalidTable");
-  EXPECT_FALSE(does_table_conforms_constraints(table));
+  EXPECT_FALSE(check_constraints(table));
 }
 
 TEST_F(ConstraintsTest, InavlidInsert) {
@@ -64,7 +64,7 @@ TEST_F(ConstraintsTest, InavlidInsert) {
   manager.add_table("InavlidInsert", valid_table);
 
   // Test if first column is valid before the insert
-  EXPECT_TRUE(does_table_conforms_constraints(valid_table));
+  EXPECT_TRUE(check_constraints(valid_table));
 
   // Add the same values again
   auto gt = std::make_shared<GetTable>("validTable");
@@ -80,7 +80,7 @@ TEST_F(ConstraintsTest, InavlidInsert) {
   context->commit();
 
   // Test if enforcer reconizes duplicates
-  EXPECT_FALSE(does_table_conforms_constraints(valid_table));
+  EXPECT_FALSE(check_constraints(valid_table));
 }
 
 TEST_F(ConstraintsTest, ValidInsert) {
@@ -100,7 +100,7 @@ TEST_F(ConstraintsTest, ValidInsert) {
   manager.add_table("ValidInsert", valid_table);
 
   // Test if first column is valid before the insert
-  EXPECT_TRUE(does_table_conforms_constraints(valid_table));
+  EXPECT_TRUE(check_constraints(valid_table));
 
   // Add the same values again
   auto gt = std::make_shared<GetTable>("validTable");
@@ -116,7 +116,7 @@ TEST_F(ConstraintsTest, ValidInsert) {
   context->commit();
 
   // Test if table is still valid
-  EXPECT_TRUE(does_table_conforms_constraints(valid_table));
+  EXPECT_TRUE(check_constraints(valid_table));
 }
 
 }  // namespace opossum
