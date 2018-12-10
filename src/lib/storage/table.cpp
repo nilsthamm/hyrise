@@ -25,6 +25,7 @@ Table::Table(const TableColumnDefinitions& column_definitions, const TableType t
       _type(type),
       _use_mvcc(use_mvcc),
       _max_chunk_size(type == TableType::Data ? max_chunk_size.value_or(Chunk::DEFAULT_SIZE) : Chunk::MAX_SIZE),
+      _constraint_definitions(std::make_shared<TableConstraintDefinitions>()),
       _append_mutex(std::make_unique<std::mutex>()) {
   // _max_chunk_size has no meaning if the table is a reference table.
   DebugAssert(type == TableType::Data || !max_chunk_size, "Must not set max_chunk_size for reference tables");
@@ -195,14 +196,8 @@ std::unique_lock<std::mutex> Table::acquire_append_mutex() { return std::unique_
 
 std::vector<IndexInfo> Table::get_indexes() const { return _indexes; }
 
-std::vector<ColumnID> Table::get_unique_columns() const {
-  auto unique_columns = std::vector<ColumnID>();
-  for (ColumnID column_id = ColumnID{0}; column_id < _column_definitions.size(); column_id++) {
-    if(_column_definitions[column_id].unique_constraint) {
-      unique_columns.emplace_back(column_id);
-    }
-  }
-  return unique_columns;
+std::shared_ptr<TableConstraintDefinitions> Table::get_unique_constraints() const {
+  return _constraint_definitions;
 }
 
 size_t Table::estimate_memory_usage() const {
@@ -222,23 +217,29 @@ size_t Table::estimate_memory_usage() const {
   return bytes;
 }
 
-
-void Table::add_unique_constraint(const ColumnID& column_id) {
-  DebugAssert(_constraint_definitions->find(column_id) == _constraint_definitions->end() 
-    || _constraint_definitions->find(column_id)->second.unique_concatenated_columns.size() == 0, "Column already has a unique constraint");
-  _constraint_definitions->operator[](column_id) = TableConstraintDefinition({});
+void Table::add_unique_constraint(const std::vector<ColumnID>& column_ids) {
+  // TODO(anybody): Check if exists
+  auto new_constraint =  TableConstraintDefinition({});
+  new_constraint.columns = column_ids;
+  _constraint_definitions->push_back(new_constraint);
 }
 
-void Table::add_primary_key_constraint(const ColumnID& column_id) {
-  // TODO only throw an error if the column can't be converted
-  Assert(!_column_definitions[column_id].nullable, "Primary key column can not be null");
-  add_unique_constraint(column_id);
-}
+// void Table::add_unique_constraint(const ColumnID& column_id) {
+//   DebugAssert(_constraint_definitions->find(column_id) == _constraint_definitions->end() 
+//     || _constraint_definitions->find(column_id)->second.unique_concatenated_columns.size() == 0, "Column already has a unique constraint");
+//   _constraint_definitions->operator[](column_id) = TableConstraintDefinition({});
+// }
 
-void Table::add_concatenated_unique_constraint(std::vector<ColumnID> column_ids) {
-  for(const auto& column_id : column_ids) {
-    _constraint_definitions->operator[](column_id) = TableConstraintDefinition{{column_ids}};
-  }
-}
+// void Table::add_primary_key_constraint(const ColumnID& column_id) {
+//   // TODO only throw an error if the column can't be converted
+//   Assert(!_column_definitions[column_id].nullable, "Primary key column can not be null");
+//   add_unique_constraint(column_id);
+// }
+
+// void Table::add_concatenated_unique_constraint(std::vector<ColumnID> column_ids) {
+//   for(const auto& column_id : column_ids) {
+//     _constraint_definitions->operator[](column_id) = TableConstraintDefinition{{column_ids}};
+//   }
+// }
 
 }  // namespace opossum

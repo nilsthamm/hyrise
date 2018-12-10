@@ -2,8 +2,8 @@
 
 namespace opossum {
 
-TableColumnDefinition::TableColumnDefinition(const std::string& name, const DataType data_type, const bool nullable, const bool unique_constraint)
-    : name(name), data_type(data_type), nullable(nullable), unique_constraint(unique_constraint) {}
+TableColumnDefinition::TableColumnDefinition(const std::string& name, const DataType data_type, const bool nullable)
+    : name(name), data_type(data_type), nullable(nullable) {}
 
 bool TableColumnDefinition::operator==(const TableColumnDefinition& rhs) const {
   return name == rhs.name && data_type == rhs.data_type && nullable == rhs.nullable;

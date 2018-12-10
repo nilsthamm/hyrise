@@ -1,6 +1,6 @@
 #pragma once
 
-#include <unordered_map>
+#include <vector>
 
 #include "types.hpp"
 
@@ -11,10 +11,11 @@ struct TableConstraintDefinition final {
 
   bool operator==(const TableConstraintDefinition& rhs) const;
 
-  std::vector<std::vector<ColumnID>> unique_concatenated_columns;
+  std::vector<ColumnID> columns;
+  bool is_primary_key;
 };
 
 // TOOD change value type to vector so that multiple constraints per column are possible
-using TableConstraintDefinitions = std::unordered_map<ColumnID, TableConstraintDefinition>;
+using TableConstraintDefinitions = std::vector<TableConstraintDefinition>;
 
-} // namespace opossum
+}  // namespace opossum

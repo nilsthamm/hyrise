@@ -2,9 +2,12 @@
 
 #include <memory>
 #include <functional>
+#include <set>
 #include <unordered_set>
 
+#include "all_type_variant.hpp"
 #include "storage/table.hpp"
+#include "storage/constraints/table_constraint_definition.hpp"
 #include "storage/segment_accessor.hpp"
 #include "resolve_type.hpp"
 #include "types.hpp"
@@ -26,11 +29,13 @@ class BaseConstraintChecker {
 template<typename T>
 class UniqueConstraintChecker : public BaseConstraintChecker {
  public:
-  UniqueConstraintChecker(const std::shared_ptr<const Table> table, const ColumnID& column_id) : BaseConstraintChecker(table, column_id) {}
+  UniqueConstraintChecker(
+    const std::shared_ptr<const Table> table,
+    const ColumnID& column_id) : BaseConstraintChecker(table, column_id) {}
   bool check() const override {
     std::unordered_set<T> unique_values;
 
-    for(const auto& chunk : _table->chunks()) {
+    for (const auto& chunk : _table->chunks()) {
       const auto& segment = chunk->get_segment(_column_id);
       auto segment_accessor = create_segment_accessor<T>(segment);
 
@@ -49,9 +54,53 @@ class UniqueConstraintChecker : public BaseConstraintChecker {
   }
 };
 
+
+// New ConstraintChecker that should use vectors of AllTypeVariants to allow concatenated constraints.
+// class ConstraintChecker {
+//  public:
+//   virtual ~BaseConstraintChecker() = default;
+
+//   virtual bool check() const = 0;
+
+//   ConstraintChecker(
+//     const std::shared_ptr<const Table> table,
+//     const TableConstraintDefinition& constraint) : _table(table), _constraint(constraint) {}
+//   bool check() const override {
+//     std::set<std::vector<AllTypeVariant>> unique_values;
+
+//     for (const auto& chunk : _table->chunks()) {
+//       for (const auto& column_id : constraint.columns) {
+//         auto row std::vector<AllTypeVariant>(constraint.columns.size());
+        
+//       }
+//       const auto& segment = chunk->get_segment(_column_id);
+//       auto segment_accessor = create_segment_accessor<T>(segment);
+
+//       for (ChunkOffset chunk_offset = 0; chunk_offset < segment->size(); chunk_offset++) {
+//         const std::optional<AllTypeVariant>& value = segment[chunk_offset];
+//         if (!value.has_value()) {
+//           continue;
+//         }
+//         if (unique_values.count(value.value())) {
+//           return false;
+//         }
+//         unique_values.insert(value.value());
+//       }
+//     }
+//     return true;
+//   }
+
+//   protected:
+//    std::shared_ptr<const Table> _table;
+//    TableConstraintDefinition _constraint;
+
+// };
+
+
 bool check_constraints(std::shared_ptr<const Table> table) {
-  for(const auto& column_id : table->get_unique_columns()) {
-    const auto constraint_checker = make_shared_by_data_type<BaseConstraintChecker, UniqueConstraintChecker>(table->column_data_type(column_id), table, column_id);
+  for (const auto& constraint : *(table->get_unique_constraints())) {
+    const auto constraint_checker = make_shared_by_data_type<BaseConstraintChecker, UniqueConstraintChecker>(
+      table->column_data_type(constraint.columns[0]), table, constraint.columns[0]);
     if (!constraint_checker->check()) {
       return false;
     }

@@ -163,7 +163,7 @@ class Table : private Noncopyable {
     _indexes.emplace_back(i);
   }
 
-  std::vector<ColumnID> get_unique_columns() const;
+  std::shared_ptr<TableConstraintDefinitions> get_unique_constraints() const;
 
   /**
    * For debugging purposes, makes an estimation about the memory used by this Table (including Chunk and Segments)
@@ -173,11 +173,11 @@ class Table : private Noncopyable {
   /**
    * Constraints related functions
    */
-  void add_unique_constraint(const ColumnID& column_id);
+  void add_unique_constraint(const std::vector<ColumnID>& column_ids);
 
-  void add_primary_key_constraint(const ColumnID& column_id);
+  // void add_primary_key_constraint(const ColumnID& column_id);
 
-  void add_concatenated_unique_constraint(std::vector<ColumnID> column_ids);
+  // void add_concatenated_unique_constraint(std::vector<ColumnID> column_ids);
 
  protected:
   const TableColumnDefinitions _column_definitions;

@@ -9,4 +9,4 @@ bool TableConstraintDefinition::operator==(const TableConstraintDefinition& rhs)
   return true;
 }
 
-} // namespace opossum
+}  // namespace opossum
