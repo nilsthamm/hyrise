@@ -4,9 +4,4 @@
 
 namespace opossum {
 
-bool TableConstraintDefinition::operator==(const TableConstraintDefinition& rhs) const {
-  // TODO sort arrays and compare values
-  return true;
-}
-
 }  // namespace opossum

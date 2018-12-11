@@ -64,23 +64,42 @@ class ConcatenatedConstraintChecker {
   ConcatenatedConstraintChecker(
     const std::shared_ptr<const Table> table,
     const TableConstraintDefinition& constraint) : _table(table), _constraint(constraint) {}
-  bool check() const {
-    std::set<std::vector<AllTypeVariant>> unique_values;
 
+  bool check() const {
+    // TODO should we check that there or only when constraint is created?
+    if (_constraint.is_primary_key) {
+      for (const auto& column_id : _constraint.columns) {
+        if (_table->column_is_nullable(column_id)) {
+          return false;
+        }
+      }
+    }
+
+    std::set<std::vector<AllTypeVariant>> unique_values;
     for (const auto& chunk : _table->chunks()) {
+      const auto& segments = chunk->segments();
       for (ChunkOffset chunk_offset = 0; chunk_offset < chunk->size(); chunk_offset++) {
         auto row = std::vector<AllTypeVariant>();
         row.reserve(_constraint.columns.size());
+        bool row_contains_null = false;
         for (const auto& column_id : _constraint.columns) {
-          const auto& segment = chunk->get_segment(column_id);
-          // Todo(anybody) Handle NULL values properly.
-          row.push_back(segment->operator[](chunk_offset));
+          const auto& segment = segments[column_id];
+          const auto& value = segment->operator[](chunk_offset);
+          if (variant_is_null(value)) {
+            row_contains_null = true;
+          }
+          row.emplace_back(value);
         }
 
-        // if (!value.has_value()) {
-        //   continue;
-        // }
-        if (unique_values.count(row)) {
+        // this should handle null values in unique constraints as follows:
+        // - if a row doesn't contain any null values, the tuple of the columns must be unique
+        // - if a row contains any null values:
+        //   - there may be multiple 
+        //   - the tuple (with NULL_VALUE's) may be contained already in the set of unique values
+        //     to be regarded as unique value
+        //   - (this works with NULL_VALUE's being handled as equal when comparing them with operator< in a vector,
+        //      contrary to NULL_VALUE's being not equal according to ternary logic)
+        if (unique_values.count(row) && !row_contains_null) {
           return false;
         }
         unique_values.insert(row);
