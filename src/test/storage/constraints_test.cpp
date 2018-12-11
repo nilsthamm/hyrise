@@ -82,7 +82,7 @@ TEST_F(ConstraintsTest, InvalidInsert) {
 
   context->commit();
 
-  // Test if enforcer reconizes duplicates
+  // Test if enforcer recognizes duplicates
   EXPECT_FALSE(check_constraints(valid_table));
 }
 
@@ -121,6 +121,30 @@ TEST_F(ConstraintsTest, ValidInsert) {
 
   // Test if table is still valid
   EXPECT_TRUE(check_constraints(valid_table));
+}
+
+TEST_F(ConstraintsTest, InvalidConcatenatedInsert) {
+  // Use private table to not interfere with other test cases
+  TableColumnDefinitions valid_table_column_definitions;
+  valid_table_column_definitions.emplace_back("column_1", DataType::Int, false);
+  valid_table_column_definitions.emplace_back("column_2", DataType::Int, false);
+
+  auto valid_table = std::make_shared<Table>(valid_table_column_definitions, TableType::Data, 2, UseMvcc::Yes);
+  valid_table->add_unique_constraint({ColumnID{0}, ColumnID{1}});
+
+  valid_table->append({1, 1});
+  valid_table->append({2, 1});
+  valid_table->append({1, 2});
+  valid_table->append({0, -1});
+
+  // Test if first column is valid before the insert
+  EXPECT_TRUE(check_constraints(valid_table));
+
+  valid_table->append({1, 2});
+  EXPECT_FALSE(check_constraints(valid_table));
+
+  // Test if enforcer recognizes duplicates
+  EXPECT_FALSE(check_constraints(valid_table));
 }
 
 }  // namespace opossum
