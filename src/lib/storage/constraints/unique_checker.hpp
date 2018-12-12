@@ -66,7 +66,6 @@ class ConcatenatedConstraintChecker {
     const TableConstraintDefinition& constraint) : _table(table), _constraint(constraint) {}
 
   bool check() const {
-    // TODO should we check that there or only when constraint is created?
     if (_constraint.is_primary_key) {
       for (const auto& column_id : _constraint.columns) {
         if (_table->column_is_nullable(column_id)) {
@@ -75,6 +74,7 @@ class ConcatenatedConstraintChecker {
       }
     }
 
+    // TODO hint: boost small vector
     std::set<std::vector<AllTypeVariant>> unique_values;
     for (const auto& chunk : _table->chunks()) {
       const auto& segments = chunk->segments();
@@ -91,15 +91,17 @@ class ConcatenatedConstraintChecker {
           row.emplace_back(value);
         }
 
-        // this should handle null values in unique constraints as follows:
+        // this handles null values in unique constraints as follows:
         // - if a row doesn't contain any null values, the tuple of the columns must be unique
         // - if a row contains any null values:
-        //   - there may be multiple 
-        //   - the tuple (with NULL_VALUE's) may be contained already in the set of unique values
-        //     to be regarded as unique value
-        //   - (this works with NULL_VALUE's being handled as equal when comparing them with operator< in a vector,
-        //      contrary to NULL_VALUE's being not equal according to ternary logic)
-        if (unique_values.count(row) && !row_contains_null) {
+        //   - there may be multiple tuples with same values
+        //   - because a null value could be any value, these tuples are treated as unique
+        //   - so we don't have to put anything into the set of unique values
+        if (row_contains_null) {
+          continue;
+        }
+        // TODO set.insert might tell us if it's in there already
+        if (unique_values.count(row)) {
           return false;
         }
         unique_values.insert(row);

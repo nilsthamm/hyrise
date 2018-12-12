@@ -225,6 +225,7 @@ void Table::add_unique_constraint(const std::vector<ColumnID>& column_ids, bool 
     }
   }
   // TODO create constraint definition and check table for it before adding it?
+  // --> yep
   _constraint_definitions->push_back(TableConstraintDefinition({column_ids, primary}));
 }
 

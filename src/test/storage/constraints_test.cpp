@@ -25,36 +25,6 @@ class ConstraintsTest: public BaseTest {
   TableColumnDefinitions column_definitions;
 };
 
-TEST_F(ConstraintsTest, NullBehaviorForConstraintChecking) {
-  // we have to check some ways null values behave for the way we handle concatenated unique keys
-  
-  AllTypeVariant v1{42};
-  AllTypeVariant v2{73};
-  AllTypeVariant vnull = NULL_VALUE;
-
-  EXPECT_NE(v1, vnull);
-  EXPECT_NE(vnull, vnull);
-  EXPECT_FALSE(vnull < vnull);
-  EXPECT_FALSE(vnull > vnull);
-
-  std::set<std::vector<AllTypeVariant>> s;
-  EXPECT_FALSE(s.count({v1, v2}));
-  EXPECT_FALSE(s.count({vnull, v2}));
-  EXPECT_FALSE(s.count({vnull, vnull}));
-
-  s.insert({v1, v2});
-  EXPECT_TRUE(s.count({v1, v2}));
-  EXPECT_FALSE(s.count({vnull, v2}));
-  EXPECT_FALSE(s.count({vnull, vnull}));
-
-  // two tuples that are equal and have null values at same places
-  // should be treated as equal in a set
-  // (contrary to ternary logic where null != null)
-  s.insert({vnull, v2});
-  EXPECT_TRUE(s.count({vnull, v2}));
-  EXPECT_FALSE(s.count({vnull, vnull}));
-}
-
 TEST_F(ConstraintsTest, AddUniqueConstraints) {
   auto table = StorageManager::get().get_table("table");
   EXPECT_NO_THROW(table->add_unique_constraint({ColumnID{0}}));
@@ -192,33 +162,7 @@ TEST_F(ConstraintsTest, InvalidInsert) {
   EXPECT_FALSE(check_constraints(table));
 }
 
-// TODO question:
-// should we also test inserting with the other variations of unique constraint?
-
-/*
-TEST_F(ConstraintsTest, InvalidConcatenatedInsert) {
-  // Use private table to not interfere with other test cases
-  TableColumnDefinitions table_column_definitions;
-  table_column_definitions.emplace_back("column_1", DataType::Int, false);
-  table_column_definitions.emplace_back("column_2", DataType::Int, false);
-
-  auto table = std::make_shared<Table>(table_column_definitions, TableType::Data, 2, UseMvcc::Yes);
-  table->add_unique_constraint({ColumnID{0}, ColumnID{1}});
-
-  table->append({1, 1});
-  table->append({2, 1});
-  table->append({1, 2});
-  table->append({0, -1});
-
-  // Test if first column is valid before the insert
-  EXPECT_TRUE(check_constraints(table));
-
-  table->append({1, 2});
-  EXPECT_FALSE(check_constraints(table));
-
-  // Test if enforcer recognizes duplicates
-  EXPECT_FALSE(check_constraints(table));
-}
-*/
+// TODO tests of transactions conflicting each other
+// possibly in another file
 
 }  // namespace opossum
