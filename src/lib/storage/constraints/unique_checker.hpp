@@ -116,5 +116,6 @@ class ConcatenatedConstraintChecker {
 
 bool check_constraint(std::shared_ptr<const Table> table, const TableConstraintDefinition& constraint);
 bool check_constraints(std::shared_ptr<const Table> table);
+bool check_constraints(const std::string &table);
 
 }  // namespace opossum

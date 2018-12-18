@@ -71,4 +71,8 @@ std::shared_ptr<AbstractOperator> Update::_on_deep_copy(
 
 void Update::_on_set_parameters(const std::unordered_map<ParameterID, AllTypeVariant>& parameters) {}
 
+const std::string Update::table_name() {
+  return _table_to_update_name;
+}
+
 }  // namespace opossum

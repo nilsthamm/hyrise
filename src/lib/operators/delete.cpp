@@ -108,6 +108,10 @@ void Delete::_on_rollback_records() {
   }
 }
 
+const std::string Delete::table_name() {
+  return _table_name;
+}
+
 /**
  * values_to_delete must be a table with at least one chunk, containing at least one ReferenceSegment
  * that all reference the table specified by table_name.

@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "abstract_operator.hpp"
@@ -50,6 +51,8 @@ class AbstractReadWriteOperator : public AbstractOperator {
    * Returns true if a previous call to _on_execute produced an error.
    */
   bool execute_failed() const;
+
+  virtual const std::string table_name() = 0;
 
   ReadWriteOperatorState state() const;
 

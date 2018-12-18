@@ -227,6 +227,10 @@ void Insert::_on_commit_records(const CommitID cid) {
   }
 }
 
+const std::string Insert::table_name() {
+  return _target_table_name;
+}
+
 void Insert::_on_rollback_records() {
   for (auto row_id : _inserted_rows) {
     auto chunk = _target_table->get_chunk(row_id.chunk_id);

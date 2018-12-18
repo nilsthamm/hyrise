@@ -31,6 +31,9 @@ class Update : public AbstractReadWriteOperator {
 
   const std::string name() const override;
 
+  const std::string table_name() override;
+
+
  protected:
   std::shared_ptr<const Table> _on_execute(std::shared_ptr<TransactionContext> context) override;
   std::shared_ptr<AbstractOperator> _on_deep_copy(

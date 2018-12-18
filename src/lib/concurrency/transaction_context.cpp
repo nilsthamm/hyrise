@@ -2,9 +2,11 @@
 
 #include <future>
 #include <memory>
+#include <string>
 
 #include "commit_context.hpp"
 #include "operators/abstract_read_write_operator.hpp"
+#include "storage/constraints/unique_checker.hpp"
 #include "transaction_manager.hpp"
 #include "utils/assert.hpp"
 
@@ -76,9 +78,26 @@ bool TransactionContext::commit_async(const std::function<void(TransactionID)>& 
 
   if (!success) return false;
 
+  // Check all _rw_operators for relevant columns
+  //   - Only Insert and Update are interesting
+  // If a constraint is potentially violated, create UniqueChecker 
+
+  // If UniqueChecker fails, rollback every operator.
+  std::vector<std::string> changed_tables;
+
   for (const auto& op : _rw_operators) {
     op->commit_records(commit_id());
+    const auto &type = op->type();
+    if (type == OperatorType::Update || type == OperatorType::Insert) {
+      changed_tables.push_back(op->table_name());
+    }
   }
+
+  for (const auto& table_name : changed_tables) {
+    if (!check_constraints(table_name))
+      return false;
+  }
+
 
   _mark_as_pending_and_try_commit(callback);
 
