@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "resolve_type.hpp"
+#include "storage/constraints/unique_checker.hpp"
 #include "types.hpp"
 #include "utils/assert.hpp"
 #include "value_segment.hpp"
@@ -25,7 +26,6 @@ Table::Table(const TableColumnDefinitions& column_definitions, const TableType t
       _type(type),
       _use_mvcc(use_mvcc),
       _max_chunk_size(type == TableType::Data ? max_chunk_size.value_or(Chunk::DEFAULT_SIZE) : Chunk::MAX_SIZE),
-      _constraint_definitions(std::make_shared<TableConstraintDefinitions>()),
       _append_mutex(std::make_unique<std::mutex>()) {
   // _max_chunk_size has no meaning if the table is a reference table.
   DebugAssert(type == TableType::Data || !max_chunk_size, "Must not set max_chunk_size for reference tables");
@@ -196,7 +196,7 @@ std::unique_lock<std::mutex> Table::acquire_append_mutex() { return std::unique_
 
 std::vector<IndexInfo> Table::get_indexes() const { return _indexes; }
 
-std::shared_ptr<TableConstraintDefinitions> Table::get_unique_constraints() const {
+const std::vector<TableConstraintDefinition>& Table::get_unique_constraints() const {
   return _constraint_definitions;
 }
 
@@ -220,13 +220,18 @@ size_t Table::estimate_memory_usage() const {
 void Table::add_unique_constraint(const std::vector<ColumnID>& column_ids, bool primary) {
   for (const auto column_id : column_ids) {
     Assert(column_id < column_count(), "ColumnID out of range");
+    // TODO primary check here shouldn't be necessary once checking constraint below works
     if (primary) {
       Assert(!column_is_nullable(column_id), "Column must be not nullable for primary key constraint")
     }
   }
-  // TODO create constraint definition and check table for it before adding it?
-  // --> yep
-  _constraint_definitions->push_back(TableConstraintDefinition({column_ids, primary}));
+  // TODO how to pass this table to constraint checking?
+  // - const ref or by raw pointer ?!
+  // - shared_from_this() fails with bad_weak_ptr (even though table object should be in shared_ptr already)
+  TableConstraintDefinition constraint({column_ids, primary});
+  //auto ptr = shared_from_this();
+  //Assert(check_constraint(shared_from_this(), constraint), "Constraint is not fulfilled yet");
+  _constraint_definitions.emplace_back(constraint);
 }
 
 }  // namespace opossum

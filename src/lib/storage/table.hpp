@@ -163,7 +163,7 @@ class Table : private Noncopyable {
     _indexes.emplace_back(i);
   }
 
-  std::shared_ptr<TableConstraintDefinitions> get_unique_constraints() const;
+  const std::vector<TableConstraintDefinition>& get_unique_constraints() const;
 
   /**
    * For debugging purposes, makes an estimation about the memory used by this Table (including Chunk and Segments)
@@ -180,10 +180,7 @@ class Table : private Noncopyable {
   const TableType _type;
   const UseMvcc _use_mvcc;
   const uint32_t _max_chunk_size;
-  // TODO
-  // directly as vector
-  // no shared ptr
-  std::shared_ptr<TableConstraintDefinitions> _constraint_definitions;
+  std::vector<TableConstraintDefinition> _constraint_definitions;
   std::vector<std::shared_ptr<Chunk>> _chunks;
   std::shared_ptr<TableStatistics> _table_statistics;
   std::unique_ptr<std::mutex> _append_mutex;

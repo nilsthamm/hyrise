@@ -11,6 +11,4 @@ struct TableConstraintDefinition final {
   bool is_primary_key;
 };
 
-using TableConstraintDefinitions = std::vector<TableConstraintDefinition>;
-
 }  // namespace opossum

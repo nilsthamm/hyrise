@@ -1,5 +1,6 @@
 #pragma once
 
+#include <boost/container/small_vector.hpp>
 #include <memory>
 #include <functional>
 #include <set>
@@ -74,12 +75,11 @@ class ConcatenatedConstraintChecker {
       }
     }
 
-    // TODO hint: boost small vector
-    std::set<std::vector<AllTypeVariant>> unique_values;
+    std::set<boost::container::small_vector<AllTypeVariant, 3>> unique_values;
     for (const auto& chunk : _table->chunks()) {
       const auto& segments = chunk->segments();
       for (ChunkOffset chunk_offset = 0; chunk_offset < chunk->size(); chunk_offset++) {
-        auto row = std::vector<AllTypeVariant>();
+        auto row = boost::container::small_vector<AllTypeVariant, 3>();
         row.reserve(_constraint.columns.size());
         bool row_contains_null = false;
         for (const auto& column_id : _constraint.columns) {
@@ -100,11 +100,10 @@ class ConcatenatedConstraintChecker {
         if (row_contains_null) {
           continue;
         }
-        // TODO set.insert might tell us if it's in there already
-        if (unique_values.count(row)) {
+        const auto& [iterator, inserted] = unique_values.insert(row);
+        if (!inserted) {
           return false;
         }
-        unique_values.insert(row);
       }
     }
     return true;
@@ -115,16 +114,7 @@ class ConcatenatedConstraintChecker {
   TableConstraintDefinition _constraint;
 };
 
+bool check_constraint(std::shared_ptr<const Table> table, const TableConstraintDefinition& constraint);
+bool check_constraints(std::shared_ptr<const Table> table);
 
-bool check_constraints(std::shared_ptr<const Table> table) {
-  for (const auto& constraint : *(table->get_unique_constraints())) {
-    // const auto constraint_checker = make_shared_by_data_type<BaseConstraintChecker, UniqueConstraintChecker>(
-    //   table->column_data_type(constraint.columns[0]), table, constraint.columns[0]);
-    const auto constraint_checker = std::make_shared<ConcatenatedConstraintChecker>(table, constraint);
-    if (!constraint_checker->check()) {
-      return false;
-    }
-  }
-  return true;
-}
 }  // namespace opossum
