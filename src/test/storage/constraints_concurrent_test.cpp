@@ -131,8 +131,8 @@ TEST_F(ConstraintsConcurrentTest, InvalidInsert) {
   auto context = TransactionManager::get().new_transaction_context();
   ins->set_transaction_context(context);
   ins->execute();
-  context->commit();
-  context->rollback();
+  EXPECT_FALSE(context->commit());
+  EXPECT_TRUE(context->rollback());
 
   // table should be invalid after adding new values
   // EXPECT_FALSE(check_constraints(table));

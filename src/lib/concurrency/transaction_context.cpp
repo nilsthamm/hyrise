@@ -86,7 +86,6 @@ bool TransactionContext::commit_async(const std::function<void(TransactionID)>& 
   std::vector<std::string> changed_tables;
 
   for (const auto& op : _rw_operators) {
-    op->commit_records(commit_id());
     const auto &type = op->type();
     if (type == OperatorType::Update || type == OperatorType::Insert) {
       changed_tables.push_back(op->table_name());
@@ -95,11 +94,19 @@ bool TransactionContext::commit_async(const std::function<void(TransactionID)>& 
 
   for (const auto& table_name : changed_tables) {
     // TODO retrieve last commit_id before commit_context
-    if (!check_constraints(table_name, _commit_context->commit_id())) {
+    if (!check_constraints(table_name, _commit_context->commit_id(), _transaction_id)) {
+      _transition(
+        TransactionPhase::Committing,
+        TransactionPhase::Active,
+        TransactionPhase::RolledBack
+      );
       return false;
     }
   }
 
+  for (const auto& op : _rw_operators) {
+    op->commit_records(commit_id());
+  }
 
   _mark_as_pending_and_try_commit(callback);
 

@@ -66,7 +66,8 @@ class ConcatenatedConstraintChecker {
   ConcatenatedConstraintChecker(
     const std::shared_ptr<const Table> table,
     const TableConstraintDefinition& constraint,
-    const CommitID& last_commit_id) : _table(table), _constraint(constraint), _last_commit_id(last_commit_id) {}
+    const CommitID& snapshot_commit_id,
+    const TransactionID& our_tid ) : _table(table), _constraint(constraint), _snapshot_commit_id(snapshot_commit_id), _our_tid(our_tid) {}
 
   bool check() const {
     if (_constraint.is_primary_key) {
@@ -82,18 +83,31 @@ class ConcatenatedConstraintChecker {
     for (const auto& chunk : _table->chunks()) {
       auto mvcc_end_cids = chunk->get_scoped_mvcc_data_lock()->end_cids;
       auto mvcc_begin_cids = chunk->get_scoped_mvcc_data_lock()->begin_cids;
+      auto mvcc_tids = chunk->get_scoped_mvcc_data_lock()->begin_cids;
+
       const auto& segments = chunk->segments();
       for (ChunkOffset chunk_offset = 0; chunk_offset < chunk->size(); chunk_offset++) {
         auto row = boost::container::small_vector<AllTypeVariant, 3>();
         row.reserve(_constraint.columns.size());
         bool row_contains_null = false;
-        // TODO Explain
-        if(mvcc_end_cids[chunk_offset] <= _last_commit_id || mvcc_begin_cids[chunk_offset] > _last_commit_id) {
-          std::cout << "last_commit_id: " << _last_commit_id << std::endl;
-          std::cout << "MVCC end: " << mvcc_end_cids[chunk_offset] << std::endl;
+
+        const auto begin_cid = mvcc_begin_cids[chunk_offset];
+        const auto end_cid = mvcc_end_cids[chunk_offset];
+        const auto row_tid = mvcc_tids[chunk_offset];
+
+        if (_snapshot_commit_id < end_cid && ((_snapshot_commit_id >= begin_cid) != (row_tid == _our_tid))) {
+          std::cout << "_snapshot_commit_id: " << _snapshot_commit_id << std::endl;
+          std::cout << "MVCC end: " << end_cid << std::endl;
           std::cout << "MVCC begin: " << mvcc_begin_cids[chunk_offset] << std::endl;
           continue;
         }
+        // // TODO Explain
+        // if (end_cid <= _snapshot_commit_id || begin_cid > _snapshot_commit_id) {
+        //   std::cout << "_snapshot_commit_id: " << _snapshot_commit_id << std::endl;
+        //   std::cout << "MVCC end: " << end_cid << std::endl;
+        //   std::cout << "MVCC begin: " << mvcc_begin_cids[chunk_offset] << std::endl;
+        //   continue;
+        // }
         for (const auto& column_id : _constraint.columns) {
           const auto& segment = segments[column_id];
           const auto& value = segment->operator[](chunk_offset);
@@ -124,11 +138,12 @@ class ConcatenatedConstraintChecker {
  protected:
   std::shared_ptr<const Table> _table;
   TableConstraintDefinition _constraint;
-  CommitID _last_commit_id;
+  CommitID _snapshot_commit_id;
+  TransactionID _our_tid;
 };
 
 bool check_constraint(std::shared_ptr<const Table> table, const TableConstraintDefinition& constraint);
 bool check_constraints(std::shared_ptr<const Table> table);
-bool check_constraints(const std::string &table, const CommitID& last_commit_id);
+bool check_constraints(const std::string &table, const CommitID& snapshot_commit_id, const TransactionID& our_tid);
 
 }  // namespace opossum
