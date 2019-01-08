@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "all_type_variant.hpp"
+#include "operators/validate.hpp"
 #include "storage/mvcc_data.hpp"
 #include "storage/table.hpp"
 #include "storage/constraints/table_constraint_definition.hpp"
@@ -81,33 +82,20 @@ class ConcatenatedConstraintChecker {
     std::set<boost::container::small_vector<AllTypeVariant, 3>> unique_values;
 
     for (const auto& chunk : _table->chunks()) {
-      auto mvcc_end_cids = chunk->get_scoped_mvcc_data_lock()->end_cids;
-      auto mvcc_begin_cids = chunk->get_scoped_mvcc_data_lock()->begin_cids;
-      auto mvcc_tids = chunk->get_scoped_mvcc_data_lock()->begin_cids;
+      const auto mvcc_data = chunk->get_scoped_mvcc_data_lock();
 
       const auto& segments = chunk->segments();
       for (ChunkOffset chunk_offset = 0; chunk_offset < chunk->size(); chunk_offset++) {
+        const auto row_tid = mvcc_data->tids[chunk_offset].load();
+        const auto begin_cid = mvcc_data->begin_cids[chunk_offset];
+        const auto end_cid = mvcc_data->end_cids[chunk_offset];
         auto row = boost::container::small_vector<AllTypeVariant, 3>();
         row.reserve(_constraint.columns.size());
         bool row_contains_null = false;
 
-        const auto begin_cid = mvcc_begin_cids[chunk_offset];
-        const auto end_cid = mvcc_end_cids[chunk_offset];
-        const auto row_tid = mvcc_tids[chunk_offset];
-
-        if (_snapshot_commit_id < end_cid && ((_snapshot_commit_id >= begin_cid) != (row_tid == _our_tid))) {
-          std::cout << "_snapshot_commit_id: " << _snapshot_commit_id << std::endl;
-          std::cout << "MVCC end: " << end_cid << std::endl;
-          std::cout << "MVCC begin: " << mvcc_begin_cids[chunk_offset] << std::endl;
+        if (!Validate::is_row_visible(_our_tid, _snapshot_commit_id, row_tid, begin_cid, end_cid)) {
           continue;
         }
-        // // TODO Explain
-        // if (end_cid <= _snapshot_commit_id || begin_cid > _snapshot_commit_id) {
-        //   std::cout << "_snapshot_commit_id: " << _snapshot_commit_id << std::endl;
-        //   std::cout << "MVCC end: " << end_cid << std::endl;
-        //   std::cout << "MVCC begin: " << mvcc_begin_cids[chunk_offset] << std::endl;
-        //   continue;
-        // }
         for (const auto& column_id : _constraint.columns) {
           const auto& segment = segments[column_id];
           const auto& value = segment->operator[](chunk_offset);
