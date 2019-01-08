@@ -8,6 +8,7 @@
 #include "concurrency/transaction_context.hpp"
 #include "resolve_type.hpp"
 #include "storage/base_encoded_segment.hpp"
+#include "storage/constraints/unique_checker.hpp"
 #include "storage/storage_manager.hpp"
 #include "storage/value_segment.hpp"
 #include "type_cast.hpp"
@@ -212,6 +213,13 @@ std::shared_ptr<const Table> Insert::_on_execute(std::shared_ptr<TransactionCont
 
     input_offset += current_num_rows_to_insert;
     start_index = 0u;
+  }
+
+  if(transaction_context_is_set()) {
+    const auto constraints_valid = check_constraints(_target_table, transaction_context()->snapshot_commit_id(), transaction_context()->transaction_id());
+    if (!constraints_valid) {
+      _mark_as_failed();
+    }
   }
 
   return nullptr;
