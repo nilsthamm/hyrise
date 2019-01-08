@@ -14,7 +14,7 @@ bool check_constraint(std::shared_ptr<const Table> table, const TableConstraintD
   return constraint_checker->check();
 }
 
-bool check_constraints(std::shared_ptr<const Table> table) {
+bool check_constraints(std::shared_ptr<const Table> table, const CommitID& last_commit_id, const TransactionID& our_tid) {
   for (const auto& constraint : table->get_unique_constraints()) {
     if (!check_constraint(table, constraint)) {
       return false;
