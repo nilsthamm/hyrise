@@ -94,8 +94,10 @@ bool TransactionContext::commit_async(const std::function<void(TransactionID)>& 
   }
 
   for (const auto& table_name : changed_tables) {
-    if (!check_constraints(table_name))
+    // TODO retrieve last commit_id before commit_context
+    if (!check_constraints(table_name, _commit_context->commit_id())) {
       return false;
+    }
   }
 
 

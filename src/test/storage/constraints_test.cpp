@@ -104,64 +104,6 @@ TEST_F(ConstraintsTest, TableConcatenatedUniqueNullable) {
   EXPECT_FALSE(check_constraints(table));
 }
 
-TEST_F(ConstraintsTest, ValidInsert) {
-  auto& manager = StorageManager::get();
-  auto table = manager.get_table("table");
-  auto new_values = std::make_shared<Table>(column_definitions, TableType::Data, 2, UseMvcc::Yes);
-  manager.add_table("new_values", new_values);
-
-  table->add_unique_constraint({ColumnID{0}});
-  table->append({1, 1, 3});
-  table->append({2, 1, 2});
-  table->append({3, 2, 0});
-  new_values->append({6, 0, 1});
-  new_values->append({4, 1, 3});
-
-  // table should be valid before adding new values
-  EXPECT_TRUE(check_constraints(table));
-
-  // add new values
-  auto gt = std::make_shared<GetTable>("new_values");
-  gt->execute();
-  auto ins = std::make_shared<Insert>("table", gt);
-  auto context = TransactionManager::get().new_transaction_context();
-  ins->set_transaction_context(context);
-  ins->execute();
-  context->commit();
-
-  // table should be still valid after adding new values
-  EXPECT_TRUE(check_constraints(table));
-}
-
-TEST_F(ConstraintsTest, InvalidInsert) {
-  auto& manager = StorageManager::get();
-  auto table = manager.get_table("table");
-  auto new_values = std::make_shared<Table>(column_definitions, TableType::Data, 2, UseMvcc::Yes);
-  manager.add_table("new_values", new_values);
-
-  table->add_unique_constraint({ColumnID{0}});
-  table->append({1, 1, 3});
-  table->append({2, 1, 2});
-  table->append({3, 2, 0});
-  new_values->append({3, 0, 1});
-  new_values->append({4, 1, 3});
-
-  // table should be valid before adding new values
-  EXPECT_TRUE(check_constraints(table));
-
-  // add new values
-  auto gt = std::make_shared<GetTable>("new_values");
-  gt->execute();
-  auto ins = std::make_shared<Insert>("table", gt);
-  auto context = TransactionManager::get().new_transaction_context();
-  ins->set_transaction_context(context);
-  ins->execute();
-  context->commit();
-
-  // table should be invalid after adding new values
-  EXPECT_FALSE(check_constraints(table));
-}
-
 // TODO tests of transactions conflicting each other
 // possibly in another file
 

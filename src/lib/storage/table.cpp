@@ -218,7 +218,7 @@ size_t Table::estimate_memory_usage() const {
 }
 
 void Table::add_unique_constraint(const std::vector<ColumnID>& column_ids, bool primary) {
-  for (const auto column_id : column_ids) {
+  for (const auto& column_id : column_ids) {
     Assert(column_id < column_count(), "ColumnID out of range");
     // TODO primary check here shouldn't be necessary once checking constraint below works
     if (primary) {
