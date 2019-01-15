@@ -216,9 +216,8 @@ std::shared_ptr<const Table> Insert::_on_execute(std::shared_ptr<TransactionCont
   }
 
   if (transaction_context_is_set()) {
-    const auto constraints_valid = all_constraints_valid_for(
-      _target_table, transaction_context()->snapshot_commit_id(), transaction_context()->transaction_id());
-    if (!constraints_valid) {
+    if (!all_constraints_valid_for(
+      _target_table, transaction_context()->snapshot_commit_id(), transaction_context()->transaction_id())) {
       _mark_as_failed();
     }
   }
