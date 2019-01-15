@@ -27,9 +27,9 @@ std::shared_ptr<const Table> Update::_on_execute(std::shared_ptr<TransactionCont
   // 0. Validate input
   DebugAssert(context != nullptr, "Update needs a transaction context");
   DebugAssert(input_table_left()->row_count() == input_table_right()->row_count(),
-              "Update required identical layouts from its input tables");
+              "Update required identical layouts from its input tables: row_count unequal.");
   DebugAssert(input_table_left()->column_data_types() == input_table_right()->column_data_types(),
-              "Update required identical layouts from its input tables");
+              "Update required identical layouts from its input tables: column_data_types unequal.");
 
   for (const auto& chunk : input_table_left()->chunks()) {
     DebugAssert(chunk->references_exactly_one_table(),
