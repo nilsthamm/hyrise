@@ -215,8 +215,9 @@ std::shared_ptr<const Table> Insert::_on_execute(std::shared_ptr<TransactionCont
     start_index = 0u;
   }
 
-  if(transaction_context_is_set()) {
-    const auto constraints_valid = check_constraints(_target_table, transaction_context()->snapshot_commit_id(), transaction_context()->transaction_id());
+  if (transaction_context_is_set()) {
+    const auto constraints_valid = all_constraints_valid_for(
+      _target_table, transaction_context()->snapshot_commit_id(), transaction_context()->transaction_id());
     if (!constraints_valid) {
       _mark_as_failed();
     }
@@ -233,10 +234,6 @@ void Insert::_on_commit_records(const CommitID cid) {
     mvcc_data->begin_cids[row_id.chunk_offset] = cid;
     mvcc_data->tids[row_id.chunk_offset] = 0u;
   }
-}
-
-const std::string Insert::table_name() {
-  return _target_table_name;
 }
 
 void Insert::_on_rollback_records() {

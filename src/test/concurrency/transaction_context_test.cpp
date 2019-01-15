@@ -34,8 +34,6 @@ class CommitFuncOp : public AbstractReadWriteOperator {
 
   const std::string name() const override { return "CommitOp"; }
 
-  const std::string table_name() override { return "NoTable"; }
-
  protected:
   std::shared_ptr<const Table> _on_execute(std::shared_ptr<TransactionContext> context) override {
     context->register_read_write_operator(std::static_pointer_cast<AbstractReadWriteOperator>(shared_from_this()));

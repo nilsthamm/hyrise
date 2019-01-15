@@ -62,4 +62,8 @@ void AbstractReadWriteOperator::_mark_as_failed() {
   _state = ReadWriteOperatorState::Failed;
 }
 
+const std::string Insert::table_name() {
+  return _target_table_name;
+}
+
 }  // namespace opossum

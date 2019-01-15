@@ -27,8 +27,6 @@ class Insert : public AbstractReadWriteOperator {
 
   const std::string name() const override;
 
-  const std::string table_name() override;
-
  protected:
   std::shared_ptr<const Table> _on_execute(std::shared_ptr<TransactionContext> context) override;
   std::shared_ptr<AbstractOperator> _on_deep_copy(
@@ -39,9 +37,7 @@ class Insert : public AbstractReadWriteOperator {
   void _on_rollback_records() override;
 
  private:
-  const std::string _target_table_name;
   std::shared_ptr<Table> _target_table;
-
   PosList _inserted_rows;
 };
 

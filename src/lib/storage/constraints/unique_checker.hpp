@@ -58,9 +58,9 @@ class UniqueConstraintChecker : public BaseConstraintChecker {
   }
 };
 
-bool check_constraint(std::shared_ptr<const Table> table, const TableConstraintDefinition& constraint);
+bool constraint_valid_for(std::shared_ptr<const Table> table, const TableConstraintDefinition& constraint);
 bool check_constraints(std::shared_ptr<const Table> table);
-bool check_constraints(std::shared_ptr<const Table> table, const CommitID& snapshot_commit_id, const TransactionID& our_tid);
-bool check_constraints(const std::string &table, const CommitID& snapshot_commit_id, const TransactionID& our_tid);
+bool all_constraints_valid_for(std::shared_ptr<const Table> table, const CommitID& snapshot_commit_id, const TransactionID& our_tid);
+bool all_constraints_valid_for(const std::string &table, const CommitID& snapshot_commit_id, const TransactionID& our_tid);
 
 }  // namespace opossum

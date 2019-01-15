@@ -52,7 +52,7 @@ class AbstractReadWriteOperator : public AbstractOperator {
    */
   bool execute_failed() const;
 
-  virtual const std::string table_name() = 0;
+  const std::string table_name() override;
 
   ReadWriteOperatorState state() const;
 
@@ -94,6 +94,8 @@ class AbstractReadWriteOperator : public AbstractOperator {
    * mark_as_failed() is called to signal to AbstractReadWriteOperator that the execution failed.
    */
   void _mark_as_failed();
+
+  const std::string _target_table_name;
 
  private:
   ReadWriteOperatorState _state;
