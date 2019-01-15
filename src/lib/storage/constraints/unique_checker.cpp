@@ -5,25 +5,9 @@
 
 namespace opossum {
 
-bool check_constraint(std::shared_ptr<const Table> table, const TableConstraintDefinition& constraint) {
-  return false;
-}
 
-bool check_constraints(std::shared_ptr<const Table> table) {
-  for (const auto& constraint : table->get_unique_constraints()) {
-    if (!check_constraint(table, constraint)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool constraint_valid_for(
-    const Table& table,
-    const TableConstraintDefinition& constraint,
-    const CommitID& snapshot_commit_id,
-    const TransactionID& our_tid) {
-
+bool constraint_valid_for(const Table& table, const TableConstraintDefinition& constraint,
+                          const CommitID& snapshot_commit_id, const TransactionID& our_tid) {
   std::set<boost::container::small_vector<AllTypeVariant, 3>> unique_values;
 
   for (const auto& chunk : table.chunks()) {
@@ -54,16 +38,14 @@ bool constraint_valid_for(
           return false;
         }
       }
-      continue_with_next_row:;
+    continue_with_next_row:;
     }
   }
   return true;
 }
 
-bool all_constraints_valid_for(
-    std::shared_ptr<const Table> table,
-    const CommitID& snapshot_commit_id,
-    const TransactionID& our_tid) {
+bool all_constraints_valid_for(std::shared_ptr<const Table> table, const CommitID& snapshot_commit_id,
+                               const TransactionID& our_tid) {
   for (const auto& constraint : table->get_unique_constraints()) {
     if (!constraint_valid_for(*table, constraint, snapshot_commit_id, our_tid)) {
       return false;
@@ -72,13 +54,10 @@ bool all_constraints_valid_for(
   return true;
 }
 
-bool all_constraints_valid_for(
-    const std::string &table_name,
-    const CommitID& snapshot_commit_id,
-    const TransactionID& our_tid) {
+bool all_constraints_valid_for(const std::string& table_name, const CommitID& snapshot_commit_id,
+                               const TransactionID& our_tid) {
   auto const table = StorageManager::get().get_table(table_name);
   return all_constraints_valid_for(table, snapshot_commit_id, our_tid);
 }
 
 }  // namespace opossum
-

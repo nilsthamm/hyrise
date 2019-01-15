@@ -197,9 +197,7 @@ std::unique_lock<std::mutex> Table::acquire_append_mutex() { return std::unique_
 
 std::vector<IndexInfo> Table::get_indexes() const { return _indexes; }
 
-const std::vector<TableConstraintDefinition>& Table::get_unique_constraints() const {
-  return _constraint_definitions;
-}
+const std::vector<TableConstraintDefinition>& Table::get_unique_constraints() const { return _constraint_definitions; }
 
 size_t Table::estimate_memory_usage() const {
   auto bytes = size_t{sizeof(*this)};
@@ -226,7 +224,11 @@ void Table::add_unique_constraint(const std::vector<ColumnID>& column_ids, bool 
     }
   }
   TableConstraintDefinition constraint({column_ids, primary});
-  Assert(constraint_valid_for(*this, constraint, TransactionManager::get().last_commit_id(), 0), "Constraint is not satisfied on table values");
+  Assert(constraint_valid_for(
+    *this,
+    constraint,
+    TransactionManager::get().last_commit_id(), TransactionManager::UNUSED_TRANSACTION_ID),
+  "Constraint is not satisfied on table values");
   _constraint_definitions.emplace_back(constraint);
 }
 

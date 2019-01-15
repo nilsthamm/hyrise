@@ -12,9 +12,9 @@
 
 namespace opossum {
 
-auto reset_table(bool use_constraints, int values_to_insert, int num_rows=0) {
+auto reset_table(bool use_constraints, int values_to_insert, int num_rows = 0) {
   auto& manager = StorageManager::get();
-  
+
   auto chunk_size = ChunkID(opossum::ChunkID{2000});
 
   TableColumnDefinitions column_definitions;
@@ -26,17 +26,17 @@ auto reset_table(bool use_constraints, int values_to_insert, int num_rows=0) {
   manager.reset();
   manager.add_table("table", std::make_shared<Table>(column_definitions, TableType::Data, chunk_size, UseMvcc::Yes));
   auto table = manager.get_table("table");
-  if(use_constraints) {
+  if (use_constraints) {
     table->add_unique_constraint({ColumnID{0}});
     table->add_unique_constraint({ColumnID{1}});
   }
 
   // Insert rows to table, if num_rows != 0
-  int row_preinserted=0;
+  int row_preinserted = 0;
   auto pre_insert_table_temp = std::make_shared<Table>(column_definitions, TableType::Data, chunk_size, UseMvcc::Yes);
   manager.add_table("pre_insert_table_temp", pre_insert_table_temp);
-  
-  for(; row_preinserted < num_rows; row_preinserted++) {
+
+  for (; row_preinserted < num_rows; row_preinserted++) {
     pre_insert_table_temp->append({row_preinserted, row_preinserted*2});
   }
 
@@ -48,10 +48,9 @@ auto reset_table(bool use_constraints, int values_to_insert, int num_rows=0) {
   pre_insert->execute();
   pre_insert_context->commit();
 
-
   // Create insert operators depending on values to insert operator
   std::vector<std::shared_ptr<Insert>> table_inserts;
-  for(int row_to_insert = row_preinserted; row_to_insert < values_to_insert+num_rows; row_to_insert++) {
+  for (int row_to_insert = row_preinserted; row_to_insert < values_to_insert+num_rows; row_to_insert++) {
     auto table_temp = std::make_shared<Table>(column_definitions, TableType::Data, chunk_size, UseMvcc::Yes);
     manager.add_table("table_temp"+std::to_string(row_to_insert), table_temp);
     table_temp->append({row_to_insert, row_to_insert*2});
@@ -65,7 +64,6 @@ auto reset_table(bool use_constraints, int values_to_insert, int num_rows=0) {
 }
 
 BENCHMARK_DEFINE_F(MicroBenchmarkBasicFixture, BM_InsertEmptyTableWithConstraint)(benchmark::State& state) {
-
   while (state.KeepRunning()) {
     state.PauseTiming();
 
@@ -73,7 +71,7 @@ BENCHMARK_DEFINE_F(MicroBenchmarkBasicFixture, BM_InsertEmptyTableWithConstraint
 
     state.ResumeTiming();
 
-    for(const auto& table_insert : table_inserts) {
+    for (const auto& table_insert : table_inserts) {
       auto table_context = TransactionManager::get().new_transaction_context();
       table_insert->set_transaction_context(table_context);
       table_insert->execute();
@@ -92,7 +90,6 @@ static void InsertRanges(benchmark::internal::Benchmark* b) {
 BENCHMARK_REGISTER_F(MicroBenchmarkBasicFixture, BM_InsertEmptyTableWithConstraint)->Apply(InsertRanges);
 
 BENCHMARK_DEFINE_F(MicroBenchmarkBasicFixture, BM_InsertFilledTableWithConstraint)(benchmark::State& state) {
-
   while (state.KeepRunning()) {
     state.PauseTiming();
 
@@ -100,7 +97,7 @@ BENCHMARK_DEFINE_F(MicroBenchmarkBasicFixture, BM_InsertFilledTableWithConstrain
 
     state.ResumeTiming();
 
-    for(const auto& table_insert : table_inserts) {
+    for (const auto& table_insert : table_inserts) {
       auto table_context = TransactionManager::get().new_transaction_context();
       table_insert->set_transaction_context(table_context);
       table_insert->execute();
@@ -117,6 +114,5 @@ static void PreInsertRanges(benchmark::internal::Benchmark* b) {
 }
 
 BENCHMARK_REGISTER_F(MicroBenchmarkBasicFixture, BM_InsertFilledTableWithConstraint)->Apply(PreInsertRanges);
-
 
 }  // namespace opossum
