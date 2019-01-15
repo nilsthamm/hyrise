@@ -78,28 +78,16 @@ bool TransactionContext::commit_async(const std::function<void(TransactionID)>& 
 
   if (!success) return false;
 
-  // Check all _rw_operators for relevant columns
-  //   - Only Insert and Update are interesting
-  // If a constraint is potentially violated, create UniqueChecker 
-
-  // If UniqueChecker fails, rollback every operator.
-  std::vector<std::string> changed_tables;
-
+  // Check all _rw_operators potential violations of unique constraints.
+  // If the constraint check fails, set the commit as failed.
   for (const auto& op : _rw_operators) {
     const auto &type = op->type();
-    if (type == OperatorType::Update || type == OperatorType::Insert) {
-      changed_tables.push_back(op->table_name());
-    }
-  }
-
-  for (const auto& table_name : changed_tables) {
-    // TODO retrieve last commit_id before commit_context
-    if (!check_constraints(table_name, _commit_context->commit_id(), _transaction_id)) {
+    if ((type == OperatorType::Update || type == OperatorType::Insert) &&
+        !all_constraints_valid_for(op->table_name(), _commit_context->commit_id(), _transaction_id)) {
       _transition(
         TransactionPhase::Committing,
         TransactionPhase::Active,
-        TransactionPhase::RolledBack
-      );
+        TransactionPhase::RolledBack);
       return false;
     }
   }
