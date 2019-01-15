@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "concurrency/transaction_manager.hpp"
 #include "resolve_type.hpp"
 #include "storage/constraints/unique_checker.hpp"
 #include "types.hpp"
@@ -225,6 +226,7 @@ void Table::add_unique_constraint(const std::vector<ColumnID>& column_ids, bool 
     }
   }
   TableConstraintDefinition constraint({column_ids, primary});
+  Assert(constraint_valid_for(*this, constraint, TransactionManager::get().last_commit_id(), 0), "Constraint is not satisfied on table values");
   _constraint_definitions.emplace_back(constraint);
 }
 

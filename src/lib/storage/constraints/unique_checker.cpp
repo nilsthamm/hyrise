@@ -19,14 +19,14 @@ bool check_constraints(std::shared_ptr<const Table> table) {
 }
 
 bool constraint_valid_for(
-    std::shared_ptr<const Table> table,
+    const Table& table,
     const TableConstraintDefinition& constraint,
     const CommitID& snapshot_commit_id,
     const TransactionID& our_tid) {
 
   std::set<boost::container::small_vector<AllTypeVariant, 3>> unique_values;
 
-  for (const auto& chunk : table->chunks()) {
+  for (const auto& chunk : table.chunks()) {
     const auto mvcc_data = chunk->get_scoped_mvcc_data_lock();
 
     const auto& segments = chunk->segments();
@@ -65,7 +65,7 @@ bool all_constraints_valid_for(
     const CommitID& snapshot_commit_id,
     const TransactionID& our_tid) {
   for (const auto& constraint : table->get_unique_constraints()) {
-    if (!constraint_valid_for(table, constraint, snapshot_commit_id, our_tid)) {
+    if (!constraint_valid_for(*table, constraint, snapshot_commit_id, our_tid)) {
       return false;
     }
   }

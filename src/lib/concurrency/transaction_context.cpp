@@ -82,14 +82,13 @@ bool TransactionContext::commit_async(const std::function<void(TransactionID)>& 
   // If the constraint check fails, set the commit as failed.
   for (const auto& op : _rw_operators) {
     const auto &type = op->type();
-    if (type == OperatorType::Update || type == OperatorType::Insert) {
-      if (!all_constraints_valid_for(op->table_name(), _commit_context->commit_id(), _transaction_id)) {
-        _transition(
-          TransactionPhase::Committing,
-          TransactionPhase::Active,
-          TransactionPhase::RolledBack);
-        return false;
-      }
+    if ((type == OperatorType::Update || type == OperatorType::Insert) &&
+        !all_constraints_valid_for(op->table_name(), _commit_context->commit_id(), _transaction_id)) {
+      _transition(
+        TransactionPhase::Committing,
+        TransactionPhase::Active,
+        TransactionPhase::RolledBack);
+      return false;
     }
   }
 
