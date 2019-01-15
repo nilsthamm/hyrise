@@ -224,11 +224,9 @@ void Table::add_unique_constraint(const std::vector<ColumnID>& column_ids, bool 
     }
   }
   TableConstraintDefinition constraint({column_ids, primary});
-  Assert(constraint_valid_for(
-    *this,
-    constraint,
-    TransactionManager::get().last_commit_id(), TransactionManager::UNUSED_TRANSACTION_ID),
-  "Constraint is not satisfied on table values");
+  Assert(constraint_valid_for(*this, constraint, TransactionManager::get().last_commit_id(),
+                              TransactionManager::UNUSED_TRANSACTION_ID),
+         "Constraint is not satisfied on table values");
   _constraint_definitions.emplace_back(constraint);
 }
 
