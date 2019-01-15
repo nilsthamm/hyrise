@@ -34,6 +34,7 @@ class ConstraintsConcurrentTest: public BaseTest {
 
     auto gt = std::make_shared<GetTable>("table_temp");
     gt->execute();
+
     auto table = std::make_shared<Table>(column_definitions, TableType::Data, 3, UseMvcc::Yes);
     table->add_unique_constraint({ColumnID{0}});
     manager.add_table("table", table);
@@ -42,6 +43,29 @@ class ConstraintsConcurrentTest: public BaseTest {
     table_insert->set_transaction_context(table_context);
     table_insert->execute();
     table_context->commit();
+
+    nullable_column_definitions.emplace_back("column0", DataType::Int, true);
+    nullable_column_definitions.emplace_back("column1", DataType::Int, false);
+    nullable_column_definitions.emplace_back("column2", DataType::Int, false);
+
+    auto table_temp_nullable = std::make_shared<Table>(nullable_column_definitions, TableType::Data, 3, UseMvcc::Yes);
+    manager.add_table("table_temp_nullable", table_temp_nullable);
+
+    table_temp_nullable->append({1, 1, 3});
+    table_temp_nullable->append({2, 1, 2});
+    table_temp_nullable->append({3, 2, 0});
+
+    auto gt_nullable = std::make_shared<GetTable>("table_temp_nullable");
+    gt_nullable->execute();
+
+    auto table_nullable = std::make_shared<Table>(nullable_column_definitions, TableType::Data, 3, UseMvcc::Yes);
+    table_nullable->add_unique_constraint({ColumnID{0}});
+    manager.add_table("table_nullable", table_nullable);
+    auto table_nullable_insert = std::make_shared<Insert>("table_nullable", gt_nullable);
+    auto table_nullable_context = TransactionManager::get().new_transaction_context();
+    table_nullable_insert->set_transaction_context(table_nullable_context);
+    table_nullable_insert->execute();
+    table_nullable_context->commit();
   }
 
   auto t1_operator() {
@@ -85,6 +109,7 @@ class ConstraintsConcurrentTest: public BaseTest {
 
 
   TableColumnDefinitions column_definitions;
+  TableColumnDefinitions nullable_column_definitions;
 };
 
 TEST_F(ConstraintsConcurrentTest, ValidInsert) {
@@ -120,6 +145,136 @@ TEST_F(ConstraintsConcurrentTest, InvalidInsert) {
   auto gt = std::make_shared<GetTable>("new_values");
   gt->execute();
   auto ins = std::make_shared<Insert>("table", gt);
+  auto context = TransactionManager::get().new_transaction_context();
+  ins->set_transaction_context(context);
+  ins->execute();
+  EXPECT_TRUE(ins->execute_failed());
+  EXPECT_TRUE(context->rollback());
+}
+
+TEST_F(ConstraintsConcurrentTest, ValidInsertNullable) {
+  auto& manager = StorageManager::get();
+  auto table_nullable = manager.get_table("table_nullable");
+  auto new_values = std::make_shared<Table>(nullable_column_definitions, TableType::Data, 2, UseMvcc::Yes);
+  manager.add_table("new_values", new_values);
+
+  new_values->append({6, 0, 1});
+  new_values->append({4, 1, 3});
+  new_values->append({NullValue{}, 1, 3});
+  new_values->append({NullValue{}, 1, 3});
+
+  // add new values
+  auto gt = std::make_shared<GetTable>("new_values");
+  gt->execute();
+  auto ins = std::make_shared<Insert>("table_nullable", gt);
+  auto context = TransactionManager::get().new_transaction_context();
+  ins->set_transaction_context(context);
+  ins->execute();
+  EXPECT_FALSE(ins->execute_failed());
+  EXPECT_TRUE(context->commit());
+}
+
+TEST_F(ConstraintsConcurrentTest, InvalidInsertNullable) {
+  auto& manager = StorageManager::get();
+  auto table_nullable = manager.get_table("table_nullable");
+  auto new_values = std::make_shared<Table>(nullable_column_definitions, TableType::Data, 2, UseMvcc::Yes);
+  manager.add_table("new_values", new_values);
+
+  new_values->append({3, 0, 1});
+  new_values->append({NullValue{}, 1, 3});
+  new_values->append({4, 1, 3});
+
+  // add new values
+  auto gt = std::make_shared<GetTable>("new_values");
+  gt->execute();
+  auto ins = std::make_shared<Insert>("table_nullable", gt);
+  auto context = TransactionManager::get().new_transaction_context();
+  ins->set_transaction_context(context);
+  ins->execute();
+  EXPECT_TRUE(ins->execute_failed());
+  EXPECT_TRUE(context->rollback());
+}
+
+TEST_F(ConstraintsConcurrentTest, ValidInsertConcatenated) {
+  auto& manager = StorageManager::get();
+  auto table = manager.get_table("table");
+  table->add_unique_constraint({ColumnID{0}, ColumnID{2}});
+  auto new_values = std::make_shared<Table>(column_definitions, TableType::Data, 2, UseMvcc::Yes);
+  manager.add_table("new_values", new_values);
+
+  new_values->append({6, 0, 1});
+  new_values->append({4, 1, 4});
+
+  // add new values
+  auto gt = std::make_shared<GetTable>("new_values");
+  gt->execute();
+  auto ins = std::make_shared<Insert>("table", gt);
+  auto context = TransactionManager::get().new_transaction_context();
+  ins->set_transaction_context(context);
+  ins->execute();
+  EXPECT_FALSE(ins->execute_failed());
+  EXPECT_TRUE(context->commit());
+}
+
+TEST_F(ConstraintsConcurrentTest, InvalidInsertConcatenated) {
+  auto& manager = StorageManager::get();
+  auto table = manager.get_table("table");
+  table->add_unique_constraint({ColumnID{0}, ColumnID{2}});
+  auto new_values = std::make_shared<Table>(column_definitions, TableType::Data, 2, UseMvcc::Yes);
+  manager.add_table("new_values", new_values);
+
+  new_values->append({3, 0, 1});
+  new_values->append({4, 1, 3});
+
+  // add new values
+  auto gt = std::make_shared<GetTable>("new_values");
+  gt->execute();
+  auto ins = std::make_shared<Insert>("table", gt);
+  auto context = TransactionManager::get().new_transaction_context();
+  ins->set_transaction_context(context);
+  ins->execute();
+  EXPECT_TRUE(ins->execute_failed());
+  EXPECT_TRUE(context->rollback());
+}
+
+TEST_F(ConstraintsConcurrentTest, ValidInsertNullableConcatenated) {
+  auto& manager = StorageManager::get();
+  auto table_nullable = manager.get_table("table_nullable");
+  table_nullable->add_unique_constraint({ColumnID{0}, ColumnID{2}});
+  auto new_values = std::make_shared<Table>(nullable_column_definitions, TableType::Data, 2, UseMvcc::Yes);
+  manager.add_table("new_values", new_values);
+
+  new_values->append({6, 0, 1});
+  new_values->append({4, 1, 4});
+  new_values->append({NullValue{}, 1, 5});
+  new_values->append({NullValue{}, 1, 6});
+
+  // add new values
+  auto gt = std::make_shared<GetTable>("new_values");
+  gt->execute();
+  auto ins = std::make_shared<Insert>("table_nullable", gt);
+  auto context = TransactionManager::get().new_transaction_context();
+  ins->set_transaction_context(context);
+  ins->execute();
+  EXPECT_FALSE(ins->execute_failed());
+  EXPECT_TRUE(context->commit());
+}
+
+TEST_F(ConstraintsConcurrentTest, InvalidInsertNullableConcatenated) {
+  auto& manager = StorageManager::get();
+  auto table_nullable = manager.get_table("table_nullable");
+  table_nullable->add_unique_constraint({ColumnID{0}, ColumnID{2}});
+  auto new_values = std::make_shared<Table>(nullable_column_definitions, TableType::Data, 2, UseMvcc::Yes);
+  manager.add_table("new_values", new_values);
+
+  new_values->append({3, 0, 1});
+  new_values->append({4, 1, 5});
+  new_values->append({1, 1, 3});
+
+  // add new values
+  auto gt = std::make_shared<GetTable>("new_values");
+  gt->execute();
+  auto ins = std::make_shared<Insert>("table_nullable", gt);
   auto context = TransactionManager::get().new_transaction_context();
   ins->set_transaction_context(context);
   ins->execute();
