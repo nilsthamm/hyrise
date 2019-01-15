@@ -10,7 +10,7 @@
 #include "storage/table.hpp"
 
 namespace opossum {
-class ConstraintsTest: public BaseTest {
+class ConstraintsTest : public BaseTest {
  protected:
   void SetUp() override {
     column_definitions.emplace_back("column0", DataType::Int, false);
@@ -104,7 +104,7 @@ TEST_F(ConstraintsTest, TableConcatenatedUniqueNullable) {
   EXPECT_FALSE(check_constraints(table));
 }
 
-// TODO tests of transactions conflicting each other
+// TODO(pk_group) tests of transactions conflicting each other
 // possibly in another file
 
 }  // namespace opossum

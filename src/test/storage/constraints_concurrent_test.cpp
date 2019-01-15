@@ -17,7 +17,7 @@
 #include "storage/table.hpp"
 
 namespace opossum {
-class ConstraintsConcurrentTest: public BaseTest {
+class ConstraintsConcurrentTest : public BaseTest {
  protected:
   void SetUp() override {
     column_definitions.emplace_back("column0", DataType::Int, false);
@@ -82,7 +82,6 @@ class ConstraintsConcurrentTest: public BaseTest {
     where_three_scan->execute();
     return std::make_shared<Delete>("table", where_three_scan);
   }
-
 
   TableColumnDefinitions column_definitions;
 };
@@ -234,8 +233,7 @@ TEST_F(ConstraintsConcurrentTest, InsertInsertRace) {
  * TestCases E to G work on a table where the value 3 is not contained in column0
  */
 
-
-// execute: [t1,t2,t4] - commit order t2 -> fail; t4 -> success; t1 -> success 
+// execute: [t1,t2,t4] - commit order t2 -> fail; t4 -> success; t1 -> success
 TEST_F(ConstraintsConcurrentTest, TripleConcurrentRaceCaseA) {
   /*
   auto t1 = t1_operator("t1");

@@ -81,14 +81,11 @@ bool TransactionContext::commit_async(const std::function<void(TransactionID)>& 
   // Check all _rw_operators potential violations of unique constraints.
   // If the constraint check fails, set the commit as failed.
   for (const auto& op : _rw_operators) {
-    const auto &type = op->type();
+    const auto& type = op->type();
     // TOOD(all): Remove as soon as the transaction context phase model got refactored
     if ((type == OperatorType::Update || type == OperatorType::Insert) &&
         !all_constraints_valid_for(op->table_name(), _commit_context->commit_id(), _transaction_id)) {
-      _transition(
-        TransactionPhase::Committing,
-        TransactionPhase::Active,
-        TransactionPhase::RolledBack);
+      _transition(TransactionPhase::Committing, TransactionPhase::Active, TransactionPhase::RolledBack);
       return false;
     }
   }
