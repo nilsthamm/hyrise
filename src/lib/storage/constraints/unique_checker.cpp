@@ -5,6 +5,10 @@
 
 namespace opossum {
 
+bool check_constraint(std::shared_ptr<const Table> table, const TableConstraintDefinition& constraint) {
+  return false;
+}
+
 bool check_constraints(std::shared_ptr<const Table> table) {
   for (const auto& constraint : table->get_unique_constraints()) {
     if (!check_constraint(table, constraint)) {
@@ -12,10 +16,6 @@ bool check_constraints(std::shared_ptr<const Table> table) {
     }
   }
   return true;
-}
-
-bool check_constraint(std::shared_ptr<const Table> table, const TableConstraintDefinition& constraint) {
-  return false;
 }
 
 bool constraint_valid_for(
@@ -54,7 +54,7 @@ bool constraint_valid_for(
           return false;
         }
       }
-      continue_with_next_row:
+      continue_with_next_row:;
     }
   }
   return true;

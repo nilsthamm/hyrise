@@ -31,7 +31,8 @@ class AbstractReadWriteOperator : public AbstractOperator {
  public:
   explicit AbstractReadWriteOperator(const OperatorType type,
                                      const std::shared_ptr<const AbstractOperator>& left = nullptr,
-                                     const std::shared_ptr<const AbstractOperator>& right = nullptr);
+                                     const std::shared_ptr<const AbstractOperator>& right = nullptr,
+                                     const std::string& target_table_name = nullptr);
 
   void execute() override;
 
@@ -52,7 +53,7 @@ class AbstractReadWriteOperator : public AbstractOperator {
    */
   bool execute_failed() const;
 
-  const std::string table_name() override;
+  const std::string table_name();
 
   ReadWriteOperatorState state() const;
 
