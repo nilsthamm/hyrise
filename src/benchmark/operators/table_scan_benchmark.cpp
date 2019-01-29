@@ -95,4 +95,10 @@ BENCHMARK_F(MicroBenchmarkConstraintFixture, BM_TableConstraintScanWithout)(benc
   benchmark_tablescan_impl(state, _table_wrapper_wo_c, ColumnID{0}, PredicateCondition::Equals, 10'000);
 }
 
+BENCHMARK_F(MicroBenchmarkConstraintFixture, BM_TableConstraintScanColumnVsColumn)(benchmark::State& state) {
+  _clear_cache();
+  benchmark_tablescan_impl(state, _table_wrapper_w_c, ColumnID{0}, PredicateCondition::Equals, ColumnID{1});
+}
+
+
 }  // namespace opossum

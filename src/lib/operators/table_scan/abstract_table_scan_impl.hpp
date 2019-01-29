@@ -17,12 +17,15 @@ class AbstractTableScanImpl {
   virtual std::string description() const = 0;
 
   virtual std::shared_ptr<PosList> scan_chunk(ChunkID chunk_id) const = 0;
+  virtual std::shared_ptr<PosList> non_const_scan_chunk(ChunkID chunk_id) {return {};}
+  virtual bool is_constraint_scan() {return false;}
 
  protected:
   /**
    * @defgroup The hot loop of the table scan
    * @{
    */
+
 
   template <bool CheckForNull, bool ReturnAfterMatch, typename BinaryFunctor, typename LeftIterator>
   static void _scan_with_iterators(const BinaryFunctor func, LeftIterator left_it, const LeftIterator left_end,

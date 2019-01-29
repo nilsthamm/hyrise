@@ -23,21 +23,20 @@ ConstrainedColumnVsValueTableScanImpl::ConstrainedColumnVsValueTableScanImpl(con
 
 std::string ConstrainedColumnVsValueTableScanImpl::description() const { return "LiteralTableScan"; }
 
-std::shared_ptr<PosList> ConstrainedColumnVsValueTableScanImpl::scan_chunk(const ChunkID chunk_id) {
+std::shared_ptr<PosList> ConstrainedColumnVsValueTableScanImpl::non_const_scan_chunk(const ChunkID chunk_id) {
   auto matches = std::make_shared<PosList>();
-
-  if (_already_found) return matches;
 
   const auto& chunk = _in_table->get_chunk(chunk_id);
   const auto& segment = chunk->get_segment(_column_id);
 
+  if (_already_found) return matches;
 
   if (const auto& reference_segment = std::dynamic_pointer_cast<ReferenceSegment>(segment)) {
     _scan_reference_segment(*reference_segment, chunk_id, *matches);
   } else {
     _scan_non_reference_segment(*segment, chunk_id, *matches, nullptr);
   }
-  if (!matches->empty()) _already_found = true;
+  if (!(matches->empty())) _already_found = true;
 
   return matches;
 }

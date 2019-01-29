@@ -28,8 +28,11 @@ class ConstrainedColumnVsValueTableScanImpl : public AbstractSingleColumnTableSc
 
   std::string description() const override;
 
+  bool is_constraint_scan() override {return true;}
+
+  std::shared_ptr<PosList> non_const_scan_chunk(const ChunkID chunk_id) override;
+
  protected:
-  std::shared_ptr<PosList> scan_chunk(const ChunkID chunk_id);
   void _scan_non_reference_segment(const BaseSegment& segment, const ChunkID chunk_id, PosList& matches,
                                    const std::shared_ptr<const PosList>& position_filter) const override;
 

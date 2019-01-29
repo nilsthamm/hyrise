@@ -14,8 +14,8 @@
 #include "types.hpp"
 
 namespace {
-// Generating a table with 40,000 rows (see TableGenerator), a chunk size of 2,000 results in 20 chunks per table
-constexpr auto CHUNK_SIZE = opossum::ChunkID{1'000'000};
+// Generating a table with 1,000,000 rows, a chunk size of 100,000 results in 10 chunks per table
+constexpr auto CHUNK_SIZE = opossum::ChunkID{100'000};
 constexpr int NUM_ROWS = 1'000'000;
 }  // namespace
 
@@ -24,20 +24,22 @@ namespace opossum {
 void MicroBenchmarkConstraintFixture::SetUp(::benchmark::State& state) {
   TableColumnDefinitions column_definitions;
   column_definitions.emplace_back("column0", DataType::Int, true);
+  column_definitions.emplace_back("column1", DataType::Int, true);
 
   auto table_temp = std::make_shared<Table>(column_definitions, TableType::Data, CHUNK_SIZE, UseMvcc::Yes);
   auto& manager = StorageManager::get();
   manager.add_table("table_temp", table_temp);
 
   for (int row_id = 0; row_id < NUM_ROWS; row_id++) {
-    table_temp->append({row_id});
+    table_temp->append({row_id, row_id});
   }
 
   auto gt = std::make_shared<GetTable>("table_temp");
   gt->execute();
 
   auto table_with_constraint = std::make_shared<Table>(column_definitions, TableType::Data, CHUNK_SIZE, UseMvcc::Yes);
-  auto table_without_constraint = std::make_shared<Table>(column_definitions, TableType::Data, CHUNK_SIZE, UseMvcc::Yes);
+  auto table_without_constraint = std::make_shared<Table>(
+    column_definitions, TableType::Data, CHUNK_SIZE, UseMvcc::Yes);
   table_with_constraint->add_unique_constraint({ColumnID{0}});
   manager.add_table("table_with_constraint", table_with_constraint);
   manager.add_table("table_without_constraint", table_without_constraint);
