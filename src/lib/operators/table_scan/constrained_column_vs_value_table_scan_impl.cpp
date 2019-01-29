@@ -1,4 +1,4 @@
-#include "column_vs_value_table_scan_impl.hpp"
+#include "constrained_column_vs_value_table_scan_impl.hpp"
 
 #include <memory>
 #include <utility>
@@ -15,15 +15,35 @@
 
 namespace opossum {
 
-ColumnVsValueTableScanImpl::ColumnVsValueTableScanImpl(const std::shared_ptr<const Table>& in_table,
+ConstrainedColumnVsValueTableScanImpl::ConstrainedColumnVsValueTableScanImpl(const std::shared_ptr<const Table>& in_table,
                                                        const ColumnID column_id,
                                                        const PredicateCondition& predicate_condition,
                                                        const AllTypeVariant& value)
     : AbstractSingleColumnTableScanImpl{in_table, column_id, predicate_condition}, _value{value} {}
 
-std::string ColumnVsValueTableScanImpl::description() const { return "LiteralTableScan"; }
+std::string ConstrainedColumnVsValueTableScanImpl::description() const { return "LiteralTableScan"; }
 
-void ColumnVsValueTableScanImpl::_scan_non_reference_segment(
+std::shared_ptr<PosList> ConstrainedColumnVsValueTableScanImpl::scan_chunk(const ChunkID chunk_id) {
+  auto matches = std::make_shared<PosList>();
+
+  if (_already_found) return matches;
+
+  const auto& chunk = _in_table->get_chunk(chunk_id);
+  const auto& segment = chunk->get_segment(_column_id);
+
+
+  if (const auto& reference_segment = std::dynamic_pointer_cast<ReferenceSegment>(segment)) {
+    _scan_reference_segment(*reference_segment, chunk_id, *matches);
+  } else {
+    _scan_non_reference_segment(*segment, chunk_id, *matches, nullptr);
+  }
+  if (!matches->empty()) _already_found = true;
+
+  return matches;
+}
+
+
+void ConstrainedColumnVsValueTableScanImpl::_scan_non_reference_segment(
     const BaseSegment& segment, const ChunkID chunk_id, PosList& matches,
     const std::shared_ptr<const PosList>& position_filter) const {
   // early outs for specific NULL semantics
@@ -43,7 +63,7 @@ void ColumnVsValueTableScanImpl::_scan_non_reference_segment(
   }
 }
 
-void ColumnVsValueTableScanImpl::_scan_generic_segment(const BaseSegment& segment, const ChunkID chunk_id,
+void ConstrainedColumnVsValueTableScanImpl::_scan_generic_segment(const BaseSegment& segment, const ChunkID chunk_id,
                                                        PosList& matches,
                                                        const std::shared_ptr<const PosList>& position_filter) const {
   segment_with_iterators_filtered(segment, position_filter, [&](auto it, const auto end) {
@@ -54,12 +74,12 @@ void ColumnVsValueTableScanImpl::_scan_generic_segment(const BaseSegment& segmen
       auto comparator = [predicate_comparator, typed_value](const auto& position) {
         return predicate_comparator(position.value(), typed_value);
       };
-      _scan_with_iterators<true, false>(comparator, it, end, chunk_id, matches);
+      _scan_with_iterators<true, true>(comparator, it, end, chunk_id, matches);
     });
   });
 }
 
-void ColumnVsValueTableScanImpl::_scan_dictionary_segment(const BaseDictionarySegment& segment, const ChunkID chunk_id,
+void ConstrainedColumnVsValueTableScanImpl::_scan_dictionary_segment(const BaseDictionarySegment& segment, const ChunkID chunk_id,
                                                           PosList& matches,
                                                           const std::shared_ptr<const PosList>& position_filter) const {
   /**
@@ -98,7 +118,7 @@ void ColumnVsValueTableScanImpl::_scan_dictionary_segment(const BaseDictionarySe
     iterable.with_iterators(position_filter, [&](auto it, auto end) {
       static const auto always_true = [](const auto&) { return true; };
       // Matches all, so include all rows except those with NULLs in the result.
-      _scan_with_iterators<true, false>(always_true, it, end, chunk_id, matches);
+      _scan_with_iterators<true, true>(always_true, it, end, chunk_id, matches);
     });
 
     return;
@@ -119,15 +139,15 @@ void ColumnVsValueTableScanImpl::_scan_dictionary_segment(const BaseDictionarySe
       if (_predicate_condition == PredicateCondition::Equals ||
           _predicate_condition == PredicateCondition::LessThanEquals ||
           _predicate_condition == PredicateCondition::LessThan) {
-        _scan_with_iterators<false, false>(comparator, it, end, chunk_id, matches);
+        _scan_with_iterators<false, true>(comparator, it, end, chunk_id, matches);
       } else {
-        _scan_with_iterators<true, false>(comparator, it, end, chunk_id, matches);
+        _scan_with_iterators<true, true>(comparator, it, end, chunk_id, matches);
       }
     });
   });
 }
 
-ValueID ColumnVsValueTableScanImpl::_get_search_value_id(const BaseDictionarySegment& segment) const {
+ValueID ConstrainedColumnVsValueTableScanImpl::_get_search_value_id(const BaseDictionarySegment& segment) const {
   switch (_predicate_condition) {
     case PredicateCondition::Equals:
     case PredicateCondition::NotEquals:
@@ -144,7 +164,7 @@ ValueID ColumnVsValueTableScanImpl::_get_search_value_id(const BaseDictionarySeg
   }
 }
 
-bool ColumnVsValueTableScanImpl::_value_matches_all(const BaseDictionarySegment& segment,
+bool ConstrainedColumnVsValueTableScanImpl::_value_matches_all(const BaseDictionarySegment& segment,
                                                     const ValueID search_value_id) const {
   switch (_predicate_condition) {
     case PredicateCondition::Equals:
@@ -167,7 +187,7 @@ bool ColumnVsValueTableScanImpl::_value_matches_all(const BaseDictionarySegment&
   }
 }
 
-bool ColumnVsValueTableScanImpl::_value_matches_none(const BaseDictionarySegment& segment,
+bool ConstrainedColumnVsValueTableScanImpl::_value_matches_none(const BaseDictionarySegment& segment,
                                                      const ValueID search_value_id) const {
   switch (_predicate_condition) {
     case PredicateCondition::Equals:

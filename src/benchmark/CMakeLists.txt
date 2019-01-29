@@ -5,6 +5,8 @@ add_executable(
 
     micro_benchmark_basic_fixture.cpp
     micro_benchmark_basic_fixture.hpp
+    micro_benchmark_constraint_fixture.cpp
+    micro_benchmark_constraint_fixture.hpp
     micro_benchmark_main.cpp
     operators/aggregate_benchmark.cpp
     operators/difference_benchmark.cpp
