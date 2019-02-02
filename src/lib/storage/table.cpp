@@ -197,8 +197,6 @@ std::unique_lock<std::mutex> Table::acquire_append_mutex() { return std::unique_
 
 std::vector<IndexInfo> Table::get_indexes() const { return _indexes; }
 
-const std::vector<TableConstraintDefinition>& Table::get_unique_constraints() const { return _constraint_definitions; }
-
 size_t Table::estimate_memory_usage() const {
   auto bytes = size_t{sizeof(*this)};
 
@@ -214,6 +212,13 @@ size_t Table::estimate_memory_usage() const {
   // TODO(anybody) TableLayout missing
 
   return bytes;
+}
+
+const std::vector<TableConstraintDefinition>& Table::get_unique_constraints() const { return _constraint_definitions; }
+
+bool Table::has_constraint_on(const std::vector<ColumnID>& column_ids) const {
+  return (_constraint_definitions.end() != std::find_if(_constraint_definitions.begin(), _constraint_definitions.end(),
+        [&column_ids](const auto& existing_constraint) { return column_ids == existing_constraint.columns;}));
 }
 
 void Table::add_unique_constraint(const std::vector<ColumnID>& column_ids, bool primary) {
@@ -238,8 +243,7 @@ void Table::add_unique_constraint(const std::vector<ColumnID>& column_ids, bool 
     new_constraint = TableConstraintDefinition({column_ids, primary});
 
     Assert(
-      _constraint_definitions.end() == std::find_if(_constraint_definitions.begin(), _constraint_definitions.end(),
-        [&new_constraint](const auto& existing_constraint) { return new_constraint.columns == existing_constraint.columns;}),
+      !has_constraint_on(column_ids),
     "Another constraint on the same columns already exists.");
 
     Assert(constraint_valid_for(*this, new_constraint, TransactionManager::get().last_commit_id(),

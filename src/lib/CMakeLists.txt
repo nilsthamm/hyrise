@@ -247,6 +247,8 @@ set(
     operators/table_scan/column_vs_column_table_scan_impl.hpp
     operators/table_scan/column_vs_value_table_scan_impl.cpp
     operators/table_scan/column_vs_value_table_scan_impl.hpp
+    operators/table_scan/constrained_column_vs_value_table_scan_impl.cpp
+    operators/table_scan/constrained_column_vs_value_table_scan_impl.hpp
     operators/table_scan/expression_evaluator_table_scan_impl.cpp
     operators/table_scan/expression_evaluator_table_scan_impl.hpp
     operators/table_wrapper.cpp

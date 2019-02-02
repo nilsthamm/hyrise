@@ -173,6 +173,7 @@ class Table : private Noncopyable {
   /**
    * Constraints related functions
    */
+  bool has_constraint_on(const std::vector<ColumnID>& column_ids) const;
   void add_unique_constraint(const std::vector<ColumnID>& column_ids, bool primary = false);
 
  protected:

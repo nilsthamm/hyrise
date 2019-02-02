@@ -1,6 +1,7 @@
 #include <memory>
 
 #include "../micro_benchmark_basic_fixture.hpp"
+#include "../micro_benchmark_constraint_fixture.hpp"
 #include "benchmark/benchmark.h"
 #include "expression/expression_functional.hpp"
 #include "operators/table_scan.hpp"
@@ -83,5 +84,21 @@ BENCHMARK_F(MicroBenchmarkBasicFixture, BM_TableScan_Like)(benchmark::State& sta
     }
   }
 }
+
+BENCHMARK_F(MicroBenchmarkConstraintFixture, BM_TableConstraintScanWith)(benchmark::State& state) {
+  _clear_cache();
+  benchmark_tablescan_impl(state, _table_wrapper_w_c, ColumnID{0}, PredicateCondition::Equals, 10'000);
+}
+
+BENCHMARK_F(MicroBenchmarkConstraintFixture, BM_TableConstraintScanWithout)(benchmark::State& state) {
+  _clear_cache();
+  benchmark_tablescan_impl(state, _table_wrapper_wo_c, ColumnID{0}, PredicateCondition::Equals, 10'000);
+}
+
+BENCHMARK_F(MicroBenchmarkConstraintFixture, BM_TableConstraintScanColumnVsColumn)(benchmark::State& state) {
+  _clear_cache();
+  benchmark_tablescan_impl(state, _table_wrapper_w_c, ColumnID{0}, PredicateCondition::Equals, ColumnID{1});
+}
+
 
 }  // namespace opossum

@@ -80,7 +80,7 @@ std::shared_ptr<PosList> ColumnVsColumnTableScanImpl::scan_chunk(ChunkID chunk_i
           auto comparator = [predicate_comparator](const auto& left, const auto& right) {
             return predicate_comparator(left.value(), right.value());
           };
-          AbstractTableScanImpl::_scan_with_iterators<true>(comparator, left_it_copy, left_end_copy, chunk_id_copy,
+          AbstractTableScanImpl::_scan_with_iterators<true, false>(comparator, left_it_copy, left_end_copy, chunk_id_copy,
                                                             *matches_out_ref, right_it_copy);
         });
       } else {

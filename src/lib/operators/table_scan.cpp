@@ -33,6 +33,7 @@
 #include "table_scan/column_like_table_scan_impl.hpp"
 #include "table_scan/column_vs_column_table_scan_impl.hpp"
 #include "table_scan/column_vs_value_table_scan_impl.hpp"
+#include "table_scan/constrained_column_vs_value_table_scan_impl.hpp"
 #include "table_scan/expression_evaluator_table_scan_impl.hpp"
 #include "type_cast.hpp"
 #include "utils/assert.hpp"
@@ -97,7 +98,12 @@ std::shared_ptr<const Table> TableScan::_on_execute() {
     auto job_task = std::make_shared<JobTask>([=, &output_mutex]() {
       const auto chunk_guard = in_table->get_chunk_with_access_counting(chunk_id);
       // The actual scan happens in the sub classes of BaseTableScanImpl
-      const auto matches_out = _impl->scan_chunk(chunk_id);
+      std::shared_ptr<PosList> matches_out;
+      if (_impl->is_constraint_scan()) {
+        matches_out = _impl->non_const_scan_chunk(chunk_id);
+      } else {
+        matches_out = _impl->scan_chunk(chunk_id);
+      }
       if (matches_out->empty()) return;
 
       // The ChunkAccessCounter is reused to track accesses of the output chunk. Accesses of derived chunks are counted
@@ -221,12 +227,24 @@ std::unique_ptr<AbstractTableScanImpl> TableScan::create_impl() const {
 
     // Predicate pattern: <column> <binary predicate_condition> <non-null value>
     if (left_column_expression && right_value) {
-      return std::make_unique<ColumnVsValueTableScanImpl>(input_table_left(), left_column_expression->column_id,
-                                                          predicate_condition, *right_value);
+      const auto in_table = input_table_left();
+      if (in_table->has_constraint_on({left_column_expression->column_id})) {
+        return std::make_unique<ConstrainedColumnVsValueTableScanImpl>(in_table, left_column_expression->column_id,
+                                                            predicate_condition, *right_value);
+      } else {
+        return std::make_unique<ColumnVsValueTableScanImpl>(in_table, left_column_expression->column_id,
+                                                            predicate_condition, *right_value);
+      }
     }
     if (right_column_expression && left_value) {
-      return std::make_unique<ColumnVsValueTableScanImpl>(input_table_left(), right_column_expression->column_id,
-                                                          flip_predicate_condition(predicate_condition), *left_value);
+      const auto in_table = input_table_left();
+      if (in_table->has_constraint_on({right_column_expression->column_id})) {
+        return std::make_unique<ConstrainedColumnVsValueTableScanImpl>(in_table, right_column_expression->column_id,
+                                                            flip_predicate_condition(predicate_condition), *left_value);
+      } else {
+        return std::make_unique<ColumnVsValueTableScanImpl>(in_table, right_column_expression->column_id,
+                                                            flip_predicate_condition(predicate_condition), *left_value);
+      }
     }
 
     // Predicate pattern: <column> <binary predicate_condition> <column>
