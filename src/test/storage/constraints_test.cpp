@@ -343,4 +343,20 @@ TEST_F(ConstraintsTest, InsertInsertRace) {
   EXPECT_TRUE(insert_2_context->rollback());
 }
 
+// TEST_F(ConstraintsTest, ConcurrentInsertInsertRace) {
+//   // This tests simulate a concurrent situation where both transactions commit at the same time. Actually only one transaction is commited and the MVCC data for the other transaction is modified to look like the transaction commit shortly before.
+//   auto new_values = std::make_shared<Table>(column_definitions, TableType::Data, 2, UseMvcc::Yes);
+//   new_values->append({5, 42, 1, 42});
+
+//   // They both execute successfully since the value was not commited by either of them at the point of execution
+//   auto[insert_1, insert_1_context] = _insert_values("table", new_values);
+//   EXPECT_FALSE(insert_1->execute_failed());
+//   auto[insert_2, insert_2_context] = _insert_values("table", new_values);
+//   EXPECT_FALSE(insert_2->execute_failed());
+
+  
+//   EXPECT_FALSE(insert_2_context->commit());
+//   EXPECT_TRUE(insert_2_context->rollback());
+// }
+
 }  // namespace opossum

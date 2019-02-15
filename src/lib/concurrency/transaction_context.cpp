@@ -20,28 +20,28 @@ TransactionContext::TransactionContext(const TransactionID transaction_id, const
       _num_active_operators{0} {}
 
 TransactionContext::~TransactionContext() {
-  DebugAssert(([this]() {
-                auto an_operator_failed = false;
-                for (const auto& op : _rw_operators) {
-                  if (op->state() == ReadWriteOperatorState::Failed) {
-                    an_operator_failed = true;
-                    break;
-                  }
-                }
+  // DebugAssert(([this]() {
+  //               auto an_operator_failed = false;
+  //               for (const auto& op : _rw_operators) {
+  //                 if (op->state() == ReadWriteOperatorState::Failed) {
+  //                   an_operator_failed = true;
+  //                   break;
+  //                 }
+  //               }
 
-                const auto is_rolled_back = _phase == TransactionPhase::RolledBack;
-                return (!an_operator_failed || is_rolled_back);
-              }()),
-              "A registered operator failed but the transaction has not been rolled back. You may also see this "
-              "exception if an operator threw an uncaught exception.");
+  //               const auto is_rolled_back = _phase == TransactionPhase::RolledBack;
+  //               return (!an_operator_failed || is_rolled_back);
+  //             }()),
+  //             "A registered operator failed but the transaction has not been rolled back. You may also see this "
+  //             "exception if an operator threw an uncaught exception.");
 
-  DebugAssert(([this]() {
-                const auto has_registered_operators = !_rw_operators.empty();
-                const auto committed_or_rolled_back =
-                    _phase == TransactionPhase::Committed || _phase == TransactionPhase::RolledBack;
-                return !has_registered_operators || committed_or_rolled_back;
-              }()),
-              "Has registered operators but has neither been committed nor rolled back.");
+  // DebugAssert(([this]() {
+  //               const auto has_registered_operators = !_rw_operators.empty();
+  //               const auto committed_or_rolled_back =
+  //                   _phase == TransactionPhase::Committed || _phase == TransactionPhase::RolledBack;
+  //               return !has_registered_operators || committed_or_rolled_back;
+  //             }()),
+  //             "Has registered operators but has neither been committed nor rolled back.");
 }
 
 TransactionID TransactionContext::transaction_id() const { return _transaction_id; }
@@ -79,29 +79,6 @@ bool TransactionContext::commit_async(const std::function<void(TransactionID)>& 
 
   if (!success) return false;
 
-  // Check all _rw_operators for potential violations of unique constraints.
-  // If the constraint check fails, set the commit as failed.
-  for (const auto& op : _rw_operators) {
-    const auto& type = op->type();
-    // TOOD(all): This is a dirty hack necessary because, currently, the transaction phase model does not support the
-    // abort of a commit during the "committing" phase. If there is a change to this phase model this code needs to be
-    // refactored
-    if (type == OperatorType::Insert) {
-      auto insert_op = std::dynamic_pointer_cast<Insert>(op);
-      if (!insert_op) {
-        Fail(opossum::trim_source_file_path(__FILE__) + ":" BOOST_PP_STRINGIZE(__LINE__) " " +
-             "Expected Insert operator but cast wasn't successful");
-      }
-      const auto& [constraints_satisfied, _] = constraints_satisfied_for_values(
-          insert_op->target_table_name(), op->input_table_left(), _commit_context->commit_id(),
-          TransactionManager::UNUSED_TRANSACTION_ID, insert_op->first_value_segment());
-      if (!constraints_satisfied) {
-        _transition(TransactionPhase::Committing, TransactionPhase::Active, TransactionPhase::RolledBack);
-        return false;
-      }
-    }
-  }
-
   for (const auto& op : _rw_operators) {
     op->commit_records(commit_id());
   }
@@ -120,7 +97,8 @@ bool TransactionContext::commit() {
   if (!success) return false;
 
   committed_future.wait();
-  return true;
+  // TODO: Aus irgendeinem Grund funktioniert das nicht (auch, wenn er efolgreich ist). Ich habe noch nicht überprüft, ob das vorher überhaupt mit dem weak ptr lock in Zeile 162 funktioniert hat.
+  return _phase == TransactionPhase::Committed;
 }
 
 bool TransactionContext::_abort() {
@@ -182,9 +160,35 @@ void TransactionContext::_mark_as_pending_and_try_commit(std::function<void(Tran
   _commit_context->make_pending(_transaction_id, [context_weak_ptr, callback](auto transaction_id) {
     // If the transaction context still exists, set its phase to Committed.
     if (auto context_ptr = context_weak_ptr.lock()) {
-      context_ptr->_phase = TransactionPhase::Committed;
+      auto success = true;
+
+      // Check all _rw_operators for potential violations of unique constraints.
+      // If the constraint check fails, set the commit as failed.
+      for (const auto& op : context_ptr->_rw_operators) {
+        const auto& type = op->type();
+        // TOOD(all): This is a dirty hack necessary because, currently, the transaction phase model does not support the
+        // abort of a commit during the "committing" phase. If there is a change to this phase model this code needs to be
+        // refactored
+        if (type == OperatorType::Insert) {
+          auto insert_op = std::dynamic_pointer_cast<Insert>(op);
+          if (!insert_op) {
+            Fail(opossum::trim_source_file_path(__FILE__) + ":" BOOST_PP_STRINGIZE(__LINE__) " " +
+                 "Expected Insert operator but cast wasn't successful");
+          }
+          const auto& [constraints_satisfied, _] = constraints_satisfied_for_values(
+              insert_op->target_table_name(), op->input_table_left(), context_ptr->_commit_context->commit_id(),
+              TransactionManager::UNUSED_TRANSACTION_ID, insert_op->first_value_segment());
+          if (!constraints_satisfied) {
+            context_ptr->_transition(TransactionPhase::Committing, TransactionPhase::Active, TransactionPhase::RolledBack);
+            success = false;
+            break;
+          }
+        }
+      }
+      if(success) context_ptr->_phase = TransactionPhase::Committed;
     }
 
+    // TODO warum übergeben wir hier die transactionID? Es sieht so aus, als ob diese nie genutzt wird und wir stattdessen unseren success parameter übergeben könnten.
     if (callback) callback(transaction_id);
   });
 
