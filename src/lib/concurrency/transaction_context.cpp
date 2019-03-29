@@ -79,7 +79,6 @@ bool TransactionContext::commit_async(const std::function<void(TransactionID)>& 
 
   if (!success) return false;
 
-
   for (const auto& op : _rw_operators) {
     op->commit_records(commit_id());
   }
@@ -178,17 +177,18 @@ void TransactionContext::_mark_as_pending_and_try_commit(std::function<void(Tran
                  "Expected Insert operator but cast wasn't successful");
           }
           const auto& [constraints_satisfied, _] = check_constraints_for_values(
-              insert_op->target_table_name(), op->input_table_left(), context_ptr->_commit_context->commit_id()-1,
+              insert_op->target_table_name(), op->input_table_left(), context_ptr->_commit_context->commit_id() - 1,
               TransactionManager::UNUSED_TRANSACTION_ID, insert_op->first_chunk_to_check());
           if (!constraints_satisfied) {
-            context_ptr->_transition(TransactionPhase::Committing, TransactionPhase::Active, TransactionPhase::RolledBack);
+            context_ptr->_transition(TransactionPhase::Committing, TransactionPhase::Active,
+                                     TransactionPhase::RolledBack);
             context_ptr->rollback();
             success = false;
             break;
           }
         }
       }
-      if(success) context_ptr->_phase = TransactionPhase::Committed;
+      if (success) context_ptr->_phase = TransactionPhase::Committed;
     }
 
     if (callback) callback(transaction_id);
