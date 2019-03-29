@@ -79,6 +79,7 @@ bool TransactionContext::commit_async(const std::function<void(TransactionID)>& 
 
   if (!success) return false;
 
+
   for (const auto& op : _rw_operators) {
     op->commit_records(commit_id());
   }
@@ -176,7 +177,7 @@ void TransactionContext::_mark_as_pending_and_try_commit(std::function<void(Tran
             Fail(opossum::trim_source_file_path(__FILE__) + ":" BOOST_PP_STRINGIZE(__LINE__) " " +
                  "Expected Insert operator but cast wasn't successful");
           }
-          const auto& [constraints_satisfied, _] = constraints_satisfied_for_values(
+          const auto& [constraints_satisfied, _] = check_constraints_for_values(
               insert_op->target_table_name(), op->input_table_left(), context_ptr->_commit_context->commit_id()-1,
               TransactionManager::UNUSED_TRANSACTION_ID, insert_op->first_value_segment());
           if (!constraints_satisfied) {
