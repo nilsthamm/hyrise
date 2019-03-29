@@ -167,9 +167,9 @@ void TransactionContext::_mark_as_pending_and_try_commit(std::function<void(Tran
       // If the constraint check fails, set the commit as failed.
       for (const auto& op : context_ptr->_rw_operators) {
         const auto& type = op->type();
-        // TOOD(all): This is a dirty hack necessary because, currently, the transaction phase model does not support the
-        // abort of a commit during the "committing" phase. If there is a change to this phase model this code needs to be
-        // refactored
+        // TOOD(all): This is a dirty hack necessary because, currently, the transaction phase model does not support
+        // the abort of a commit during the "committing" phase. If there is a change to this phase model this code
+        // needs to be refactored
         if (type == OperatorType::Insert) {
           auto insert_op = std::dynamic_pointer_cast<Insert>(op);
           if (!insert_op) {
